@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Nave no Espaço — Jogos para Aprender</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; background:#070518; font-family:"Baloo 2","Comic Sans MS","Trebuchet MS",system-ui,sans-serif;
+              user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+              touch-action:none; overscroll-behavior:none; }
+  #bg { position:fixed; inset:0; z-index:0;
+        background:radial-gradient(circle at 50% 50%, #15103a 0%, #080518 70%);
+        transition:background 700ms ease; }
+  #gameCanvas { position:fixed; inset:0; z-index:1; }
+  #fx { position:fixed; inset:0; z-index:3; pointer-events:none; }
+  #flash { position:fixed; inset:0; z-index:4; pointer-events:none; opacity:0; mix-blend-mode:screen; }
+
+  /* Placar e dica */
+  #hud { position:fixed; top:1.8vh; left:2.5vw; z-index:5; display:flex; flex-direction:column; gap:.4vh; pointer-events:none; }
+  #score { font-size:min(3.6vh,5vw); font-weight:900; color:#ffd23f;
+           text-shadow:0 3px 0 rgba(0,0,0,.4), 0 0 20px rgba(255,210,63,.4); }
+  #hint { position:fixed; bottom:clamp(60px, 14vh, 120px); left:0; right:0; z-index:5; text-align:center;
+          color:rgba(255,255,255,.45); font-size:min(2.2vh,3.4vw); font-weight:700; pointer-events:none; transition:opacity .6s; }
+
+  /* Ferramentas */
+  #tools { position:fixed; top:1.4vh; right:1.4vh; z-index:6; display:flex; gap:.8vh; opacity:.3; transition:opacity .3s; }
+  #tools:hover { opacity:1; }
+  #tools button, #tools a { font:inherit; font-weight:800; font-size:1.8vh; padding:.4em .9em; border:0;
+                   border-radius:999px; background:rgba(255,255,255,.18); color:#fff; cursor:pointer;
+                   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); text-decoration:none; }
+  body.travado #tools { opacity:0; pointer-events:none; }
+
+  /* Tela de início */
+  #start { position:fixed; inset:0; z-index:9; display:flex; align-items:center; justify-content:center;
+           flex-direction:column; gap:2.6vh; background:rgba(7,5,24,.95); color:#fff; text-align:center; padding:6vw; }
+  #start h1 { font-size:min(8.5vh,10.5vw); font-weight:900; line-height:1.1;
+              background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
+              -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #start p { font-size:min(3vh,4.4vw); opacity:.85; max-width:28em; line-height:1.5; }
+  #start .controls-tip { font-size:min(2.2vh,3.4vw); opacity:.6; border-top:1px solid rgba(255,255,255,.15); padding-top:1.8vh; }
+  #start button { font:inherit; font-size:min(3.4vh,5vw); font-weight:800; padding:.7em 1.7em; border:0; cursor:pointer;
+                  border-radius:999px; background:linear-gradient(90deg,#ff9a44,#ff5f6d); color:#fff; box-shadow:0 8px 0 #00000055; }
+  #start button:active { transform:translateY(4px); box-shadow:0 4px 0 #00000055; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<canvas id="gameCanvas"></canvas>
+<canvas id="fx"></canvas>
+<div id="flash"></div>
+
+<div id="hud">
+  <div id="score">⭐ 0 meteoros</div>
+</div>
+
+<div id="hint">◄ ► Gira &nbsp;•&nbsp; ▲ Impulso &nbsp;•&nbsp; Espaço/Tiro = Feixes de luz</div>
+
+<div id="tools">
+  <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
+  <button id="btnFull" title="Tela cheia">⛶ Tela cheia</button>
+  <button id="btnTrava" title="Tela cheia + bloqueia teclas de sistema">🔓 Travar teclado</button>
+  <button id="btnVoice" title="Ligar/Desligar sons">🔊 Som: ligado</button>
+</div>
+
+<div id="start">
+  <h1>Nave no Espaço</h1>
+  <p>Voe com a sua nave triângulo pelo cosmos e atire feixes de luz para transformar meteoros em estrelas! 🚀✨</p>
+  <p class="controls-tip">
+    🕹️ <b>Teclado ou Controle:</b> Setas (ou A/D/W) para pilotar e <b>Espaço/Enter</b> para atirar.<br>
+    📱 <b>No celular:</b> Use os botões de controle na parte inferior ou toque na tela!
+  </p>
+  <button id="btnStart">Decolar!</button>
+</div>
+
+<!-- Scripts compartilhados -->
+<script>window.CONTROLES_DEFAULT_MODE = "gamepad";</script>
+<script src="../../lib/base.js"></script>
+<script src="../../lib/fonemas.js"></script>
+<script src="../../lib/audio.js"></script>
+<script src="../../lib/particulas.js"></script>
+<script src="../../lib/maos.js"></script>
+<script src="../../lib/trava.js"></script>
+<script src="../../lib/controles.js"></script>
+
+<script>
+/* ============================================================================
+   ESTADO DO JOGO DE NAVE & METEOROS
+   ========================================================================== */
+const gcv = $("gameCanvas"), gctx = gcv.getContext("2d");
+let scoreCount = 0;
+let started = false;
+let soundOn = true;
+
+/* Configuração do tamanho do Canvas de jogo */
+function resizeGame(){
+  gcv.width = innerWidth * devicePixelRatio;
+  gcv.height = innerHeight * devicePixelRatio;
+  gcv.style.width = innerWidth + "px";
+  gcv.style.height = innerHeight + "px";
+  gctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+}
+addEventListener("resize", resizeGame);
+resizeGame();
+
+/* Sons sintetizados espaciais */
+function sLaser(){
+  if(!soundOn) return;
+  tone(880, 0.09, "sine", 0.18, 220);
+}
+function sThrust(){
+  if(!soundOn) return;
+  tone(120, 0.05, "triangle", 0.08, 90);
+}
+function sHit(){
+  if(!soundOn) return;
+  tone(420, 0.14, "sine", 0.16, 840);
+}
+function sBounce(){
+  if(!soundOn) return;
+  tone(240, 0.22, "sine", 0.25, 620);
+}
+
+/* ============================================================================
+   OBJETOS DO JOGO (NAVE, TIROS, METEOROS, ESTRELAS DE FUNDO)
+   ========================================================================== */
+
+/* Fundo estelar dinâmico */
+const bgStars = Array.from({length: 80}, () => ({
+  x: Math.random() * innerWidth,
+  y: Math.random() * innerHeight,
+  r: rnd(0.8, 2.4),
+  alpha: rnd(0.2, 0.9),
+  pulse: rnd(0.01, 0.03)
+}));
+
+/* Nave espacial (Triângulo) */
+const ship = {
+  x: innerWidth / 2,
+  y: innerHeight / 2,
+  angle: -Math.PI / 2, // Apontada para cima inicialmente
+  vx: 0,
+  vy: 0,
+  rotSpeed: 0.065,
+  thrustPower: 0.22,
+  friction: 0.985,
+  size: 22,
+  shieldTimer: 0,
+  thrusting: false
+};
+
+let bullets = [];
+let asteroids = [];
+
+/* Teclas ativas para movimentação suave contínua */
+const keysPressed = {};
+
+/* Gerador de Meteoros Poligonais */
+function createAsteroid(x, y, radius, level, char){
+  const numVerts = (Math.random() * 4 | 0) + 6; // 6 a 9 vértices
+  const offsets = [];
+  for(let i = 0; i < numVerts; i++){
+    offsets.push(rnd(0.75, 1.25));
+  }
+  const color = pick(PALETTE);
+  const angVel = rnd(-0.02, 0.02);
+  const speed = rnd(0.6, 1.8) / (level === 1 ? 1 : level === 2 ? 0.8 : 0.6);
+  const moveAngle = Math.random() * Math.PI * 2;
+
+  // Letra ou número aleatório para meteoros grandes
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
+  const label = char || (level === 1 ? pick(chars.split("")) : "");
+
+  return {
+    x: x !== undefined ? x : (Math.random() < 0.5 ? 0 : innerWidth),
+    y: y !== undefined ? y : Math.random() * innerHeight,
+    vx: Math.cos(moveAngle) * speed,
+    vy: Math.sin(moveAngle) * speed,
+    angle: Math.random() * Math.PI * 2,
+    angVel: angVel,
+    radius: radius,
+    level: level, // 1: Grande, 2: Médio, 3: Pequeno
+    numVerts: numVerts,
+    offsets: offsets,
+    color: color,
+    label: label
+  };
+}
+
+/* Inicializa conjunto de meteoros */
+function spawnAsteroids(count = 5){
+  for(let i = 0; i < count; i++){
+    let x, y, dist;
+    do {
+      x = Math.random() * innerWidth;
+      y = Math.random() * innerHeight;
+      dist = Math.hypot(x - ship.x, y - ship.y);
+    } while(dist < 180); // Não nascer em cima da nave
+    asteroids.push(createAsteroid(x, y, rnd(42, 54), 1));
+  }
+}
+
+/* Dispara feixe de luz / tiro */
+function shoot(){
+  if(!started) return;
+  const tipX = ship.x + Math.cos(ship.angle) * ship.size;
+  const tipY = ship.y + Math.sin(ship.angle) * ship.size;
+  const speed = 11;
+
+  bullets.push({
+    x: tipX,
+    y: tipY,
+    vx: Math.cos(ship.angle) * speed + ship.vx * 0.4,
+    vy: Math.sin(ship.angle) * speed + ship.vy * 0.4,
+    angle: ship.angle,
+    life: 55, // Quadros de vida
+    color: pick(PALETTE)
+  });
+
+  sLaser();
+}
+
+/* ============================================================================
+   CONTROLE DE TECLADO E EVENTOS TOUCH
+   ========================================================================== */
+function onKeyDown(e){
+  if(!travaOn && (e.key === "F5" || e.key === "F11" || e.key === "F12")) return;
+  if(!travaOn && (e.metaKey || e.ctrlKey || e.altKey)) return;
+  e.preventDefault();
+  if(!started) return;
+
+  $("hint").style.opacity = "0";
+  keysPressed[e.key] = true;
+
+  if(e.key === " " || e.key === "Enter" || e.key === "x" || e.key === "z"){
+    shoot();
+  }
+
+  // Qualquer letra digitada pode gerar um disparo especial com som
+  if(/^[a-zA-Z0-9]$/.test(e.key)){
+    shoot();
+    const L = e.key.toUpperCase();
+    if(SOM[L]) speak(SOM[L].fala[0], {rate: 1.1});
+  }
+}
+
+function onKeyUp(e){
+  keysPressed[e.key] = false;
+}
+
+window.addEventListener("keydown", onKeyDown);
+window.addEventListener("keyup", onKeyUp);
+
+// Toque na tela para atirar ou apontar nave
+addEventListener("pointerdown", ev => {
+  if(!started) return;
+  if(ev.target.closest("#tools, #virtualControls, #start")) return;
+
+  // Gira a nave suavemente em direção ao ponto tocado e atira
+  const dx = ev.clientX - ship.x;
+  const dy = ev.clientY - ship.y;
+  ship.angle = Math.atan2(dy, dx);
+  shoot();
+});
+
+/* ============================================================================
+   LOOP PRINCIPAL DO JOGO (RENDER E FÍSICA)
+   ========================================================================== */
+function updateAndRender(){
+  gctx.clearRect(0, 0, innerWidth, innerHeight);
+
+  // 1. Desenha estrelas do fundo cintilantes
+  bgStars.forEach(s => {
+    s.alpha += s.pulse;
+    if(s.alpha > 0.95 || s.alpha < 0.2) s.pulse = -s.pulse;
+    gctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.1, s.alpha)})`;
+    gctx.beginPath();
+    gctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    gctx.fill();
+  });
+
+  if(started){
+    // 2. Processa movimentação da nave via teclas
+    if(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]){
+      ship.angle -= ship.rotSpeed;
+    }
+    if(keysPressed["ArrowRight"] || keysPressed["d"] || keysPressed["D"]){
+      ship.angle += ship.rotSpeed;
+    }
+    ship.thrusting = !!(keysPressed["ArrowUp"] || keysPressed["w"] || keysPressed["W"]);
+
+    if(ship.thrusting){
+      ship.vx += Math.cos(ship.angle) * ship.thrustPower;
+      ship.vy += Math.sin(ship.angle) * ship.thrustPower;
+
+      // Partículas propulsoras de fogo saindo da cauda
+      const tailX = ship.x - Math.cos(ship.angle) * (ship.size * 0.8);
+      const tailY = ship.y - Math.sin(ship.angle) * (ship.size * 0.8);
+      sprinkle(tailX + rnd(-3, 3), tailY + rnd(-3, 3), pick(["#ff5f6d", "#ff9a44", "#ffd23f"]));
+      if(Math.random() < 0.25) sThrust();
+    }
+
+    // Aplica inércia e atrito
+    ship.vx *= ship.friction;
+    ship.vy *= ship.friction;
+    ship.x += ship.vx;
+    ship.y += ship.vy;
+
+    // Screen wrap da nave
+    if(ship.x < -ship.size) ship.x = innerWidth + ship.size;
+    if(ship.x > innerWidth + ship.size) ship.x = -ship.size;
+    if(ship.y < -ship.size) ship.y = innerHeight + ship.size;
+    if(ship.y > innerHeight + ship.size) ship.y = -ship.size;
+
+    if(ship.shieldTimer > 0) ship.shieldTimer--;
+
+    // 3. Atualiza e desenha tiros (traços laser)
+    for(let i = bullets.length - 1; i >= 0; i--){
+      const b = bullets[i];
+      b.x += b.vx;
+      b.y += b.vy;
+      b.life--;
+
+      // Screen wrap tiros
+      if(b.x < 0) b.x = innerWidth;
+      if(b.x > innerWidth) b.x = 0;
+      if(b.y < 0) b.y = innerHeight;
+      if(b.y > innerHeight) b.y = 0;
+
+      if(b.life <= 0){
+        bullets.splice(i, 1);
+        continue;
+      }
+
+      // Desenha o traço do tiro
+      gctx.save();
+      gctx.strokeStyle = b.color;
+      gctx.lineWidth = 3.5;
+      gctx.lineCap = "round";
+      gctx.shadowColor = b.color;
+      gctx.shadowBlur = 10;
+      gctx.beginPath();
+      gctx.moveTo(b.x, b.y);
+      gctx.lineTo(b.x - Math.cos(b.angle) * 14, b.y - Math.sin(b.angle) * 14);
+      gctx.stroke();
+      gctx.restore();
+    }
+
+    // 4. Atualiza e desenha meteoros (polígonos)
+    for(let i = asteroids.length - 1; i >= 0; i--){
+      const a = asteroids[i];
+      a.x += a.vx;
+      a.y += a.vy;
+      a.angle += a.angVel;
+
+      // Screen wrap dos meteoros
+      if(a.x < -a.radius) a.x = innerWidth + a.radius;
+      if(a.x > innerWidth + a.radius) a.x = -a.radius;
+      if(a.y < -a.radius) a.y = innerHeight + a.radius;
+      if(a.y > innerHeight + a.radius) a.y = -a.radius;
+
+      // Desenho do polígono do meteoro
+      gctx.save();
+      gctx.translate(a.x, a.y);
+      gctx.rotate(a.angle);
+      gctx.strokeStyle = a.color;
+      gctx.lineWidth = 3;
+      gctx.lineJoin = "round";
+      gctx.fillStyle = "rgba(18, 14, 40, 0.85)";
+      gctx.shadowColor = a.color;
+      gctx.shadowBlur = 12;
+
+      gctx.beginPath();
+      for(let j = 0; j < a.numVerts; j++){
+        const ang = (j * Math.PI * 2) / a.numVerts;
+        const r = a.radius * a.offsets[j];
+        const px = Math.cos(ang) * r;
+        const py = Math.sin(ang) * r;
+        if(j === 0) gctx.moveTo(px, py);
+        else gctx.lineTo(px, py);
+      }
+      gctx.closePath();
+      gctx.fill();
+      gctx.stroke();
+
+      // Letra ou número gravado no meteoro
+      if(a.label){
+        gctx.rotate(-a.angle); // Manter texto orientado para cima
+        gctx.fillStyle = "#fff";
+        gctx.font = `900 ${a.radius * 0.9}px "Baloo 2", sans-serif`;
+        gctx.textAlign = "center";
+        gctx.textBaseline = "middle";
+        gctx.fillText(a.label, 0, 2);
+      }
+      gctx.restore();
+
+      // Colisão Tiro vs Meteoro
+      for(let bIdx = bullets.length - 1; bIdx >= 0; bIdx--){
+        const b = bullets[bIdx];
+        const dist = Math.hypot(b.x - a.x, b.y - a.y);
+        if(dist < a.radius + 4){
+          // Acertou o meteoro!
+          bullets.splice(bIdx, 1);
+          sHit();
+          sprinkle(a.x, a.y, a.color);
+
+          scoreCount++;
+          $("score").textContent = `⭐ ${scoreCount} meteoros`;
+
+          if(a.label && SOM[a.label]){
+            speak(SOM[a.label].fala[0], {rate: 1.1});
+          }
+
+          // Divide ou destrói o meteoro
+          if(a.level === 1){
+            asteroids.push(createAsteroid(a.x, a.y, rnd(24, 30), 2));
+            asteroids.push(createAsteroid(a.x, a.y, rnd(24, 30), 2));
+          } else if(a.level === 2){
+            asteroids.push(createAsteroid(a.x, a.y, rnd(12, 16), 3));
+            asteroids.push(createAsteroid(a.x, a.y, rnd(12, 16), 3));
+          } else {
+            // Explode em estrelas!
+            fireworks(a.x, a.y, Math.random() * 360);
+          }
+
+          asteroids.splice(i, 1);
+          shiftBg(18);
+          break;
+        }
+      }
+
+      // Colisão Nave vs Meteoro (SEM GAME OVER — Escudo e Ricochete Divertido!)
+      if(asteroids[i]){
+        const shipDist = Math.hypot(ship.x - a.x, ship.y - a.y);
+        if(shipDist < a.radius + ship.size * 0.8 && ship.shieldTimer === 0){
+          ship.shieldTimer = 60; // 1 segundo de invulnerabilidade
+          sBounce();
+          rainbowFlash();
+
+          // Empurra a nave e o meteoro para longe suavemente
+          const pushAngle = Math.atan2(ship.y - a.y, ship.x - a.x);
+          ship.vx += Math.cos(pushAngle) * 7;
+          ship.vy += Math.sin(pushAngle) * 7;
+          a.vx -= Math.cos(pushAngle) * 3;
+          a.vy -= Math.sin(pushAngle) * 3;
+
+          confetti();
+        }
+      }
+    }
+
+    // Se restarem poucos meteoros, surgem novos
+    if(asteroids.length < 3){
+      spawnAsteroids(4);
+    }
+
+    // 5. Desenha a Nave Espacial (Triângulo Neon)
+    gctx.save();
+    gctx.translate(ship.x, ship.y);
+    gctx.rotate(ship.angle);
+
+    // Escudo protetor cintilante se ativo
+    if(ship.shieldTimer > 0){
+      gctx.beginPath();
+      gctx.arc(0, 0, ship.size * 1.6, 0, Math.PI * 2);
+      gctx.strokeStyle = pick(PALETTE);
+      gctx.lineWidth = 3;
+      gctx.shadowColor = "#7ee8fa";
+      gctx.shadowBlur = 15;
+      gctx.stroke();
+    }
+
+    // Fogo da propulsão animado atrás da nave
+    if(ship.thrusting){
+      gctx.beginPath();
+      gctx.moveTo(-ship.size * 0.7, -ship.size * 0.4);
+      gctx.lineTo(-ship.size * (1.3 + Math.random() * 0.5), 0);
+      gctx.lineTo(-ship.size * 0.7, ship.size * 0.4);
+      gctx.closePath();
+      gctx.fillStyle = pick(["#ff5f6d", "#ffd23f", "#ff9a44"]);
+      gctx.shadowColor = "#ff5f6d";
+      gctx.shadowBlur = 14;
+      gctx.fill();
+    }
+
+    // Corpo da Nave (Triângulo)
+    gctx.beginPath();
+    gctx.moveTo(ship.size, 0); // Ponta frontal
+    gctx.lineTo(-ship.size * 0.8, -ship.size * 0.65); // Asa esquerda
+    gctx.lineTo(-ship.size * 0.4, 0); // Recuo traseiro
+    gctx.lineTo(-ship.size * 0.8, ship.size * 0.65); // Asa direita
+    gctx.closePath();
+
+    gctx.fillStyle = "#1e1b4b";
+    gctx.fill();
+    gctx.strokeStyle = "#7ee8fa";
+    gctx.lineWidth = 3.5;
+    gctx.lineJoin = "round";
+    gctx.shadowColor = "#7ee8fa";
+    gctx.shadowBlur = 14;
+    gctx.stroke();
+
+    // Cockpit brilhante
+    gctx.beginPath();
+    gctx.arc(ship.size * 0.1, 0, ship.size * 0.25, 0, Math.PI * 2);
+    gctx.fillStyle = "#ffd23f";
+    gctx.shadowColor = "#ffd23f";
+    gctx.shadowBlur = 8;
+    gctx.fill();
+
+    gctx.restore();
+  }
+
+  requestAnimationFrame(updateAndRender);
+}
+requestAnimationFrame(updateAndRender);
+
+/* ============================================================================
+   INICIALIZAÇÃO E FERRAMENTAS
+   ========================================================================== */
+$("btnStart").addEventListener("click", () => {
+  started = true;
+  $("start").remove();
+  try{ ac().resume(); }catch(e){}
+  travar();
+  spawnAsteroids(5);
+  speak("Prepare-se para voar!");
+  rainbowFlash();
+});
+
+$("btnFull").addEventListener("click", () => {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.();
+});
+
+$("btnVoice").addEventListener("click", () => {
+  soundOn = !soundOn;
+  $("btnVoice").textContent = soundOn ? "🔊 Som: ligado" : "🔇 Som: desligado";
+});
+
+$("btnTrava").addEventListener("click", travaToggle);
+document.addEventListener("trava", e => {
+  document.body.classList.toggle("travado", e.detail.on);
+  $("btnTrava").textContent = e.detail.on ? "🔒 Travado" : "🔓 Travar teclado";
+});
+</script>
+</body>
+</html>

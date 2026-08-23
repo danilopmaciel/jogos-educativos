@@ -27,10 +27,13 @@ lib/            biblioteca compartilhada — carregue nesta ordem:
   particulas.js   fogos, confete, estrelas, riscos, rainbowFlash
   maos.js         handsSVG(0..10) — luva de desenho com os dedos
   trava.js        trava de criança: travar/destravar/travaToggle, travaOn
+  controles.js    teclado virtual e gamepad touch para celular/tablet
 jogos/
   alfabeto-magico/
     index.html      HTML, CSS e lógica do jogo
     conteudo.js     WORDS, ONSET e os 54 desenhos (ART)
+  meteoros/
+    index.html      jogo espacial clássico de nave e meteoros
 ```
 
 `lib/trava.js` não espera nada no HTML — cria o próprio aviso e avisa mudanças
@@ -118,7 +121,7 @@ voz no seletor, não mexer nos parâmetros.
 
 1. Crie `jogos/<nome>/index.html`.
 2. Inclua as libs que precisar, **nesta ordem**: base → fonemas → audio →
-   particulas → maos → trava.
+   particulas → maos → trava → controles.
 3. Ponha os dados do jogo num `conteudo.js` ao lado, não no HTML.
 4. Adicione um card em `index.html` da raiz.
 5. Deixe um link `← Jogos` no canto, como o Alfabeto Mágico tem.
