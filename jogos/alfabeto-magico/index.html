@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Alfabeto Mágico</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; background:#12102a; font-family:"Baloo 2","Comic Sans MS","Trebuchet MS",system-ui,sans-serif; }
+  #bg { position:fixed; inset:0; transition:background 700ms ease; z-index:0;
+        background:radial-gradient(circle at 50% 45%, hsl(250 70% 30%), hsl(255 70% 12%) 70%); }
+  #fx { position:fixed; inset:0; z-index:3; pointer-events:none; }
+  #stage { position:fixed; inset:0; z-index:2; display:flex; align-items:center; justify-content:center;
+           flex-direction:column; gap:1vh; user-select:none; }
+  #art { width:min(58vh,74vw); height:min(58vh,74vw); display:flex; align-items:center; justify-content:center; }
+  #art svg { width:100%; height:100%; overflow:visible; filter:drop-shadow(0 10px 24px rgba(0,0,0,.45)); }
+  #label { font-size:min(11vh,14vw); font-weight:800; letter-spacing:.04em; color:#fff;
+           text-shadow:0 6px 0 rgba(0,0,0,.25), 0 0 30px rgba(255,255,255,.35); }
+  #sub { font-size:min(4.5vh,6vw); font-weight:700; color:rgba(255,255,255,.65); letter-spacing:.12em; }
+  .glyph { font-size:min(48vh,60vw); font-weight:900; line-height:1; color:#fff;
+           text-shadow:0 8px 0 rgba(0,0,0,.22), 0 0 60px currentColor; white-space:nowrap; }
+  .glyph .lower { font-size:.58em; margin-left:.06em; opacity:.8; }
+  /* letra inicial da palavra em destaque: liga o som ouvido à letra vista */
+  #label .on { color:#ffd23f; text-shadow:0 6px 0 rgba(0,0,0,.3), 0 0 40px #ffd23f; }
+  .pop { animation:pop 520ms cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-14deg); opacity:0} 60%{transform:scale(1.12) rotate(4deg); opacity:1} 100%{transform:scale(1) rotate(0)} }
+  .idle { animation:float 3.2s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0) rotate(-1.5deg)} 50%{transform:translateY(-2.2vh) rotate(1.5deg)} }
+  #flash { position:fixed; inset:0; z-index:4; pointer-events:none; opacity:0; mix-blend-mode:screen; }
+  #start { position:fixed; inset:0; z-index:9; display:flex; align-items:center; justify-content:center;
+           flex-direction:column; gap:3vh; background:rgba(10,8,30,.94); color:#fff; text-align:center; padding:6vw; }
+  #start h1 { font-size:min(9vh,11vw); font-weight:900; background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
+              -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #start p { font-size:min(3.2vh,4.6vw); opacity:.85; max-width:26em; line-height:1.5; }
+  #voiceTip { font-size:min(2.2vh,3.4vw) !important; opacity:.55 !important; max-width:30em;
+              border-top:1px solid rgba(255,255,255,.15); padding-top:2vh; }
+  #start button { font:inherit; font-size:min(3.4vh,5vw); font-weight:800; padding:.7em 1.6em; border:0; cursor:pointer;
+                  border-radius:999px; background:linear-gradient(90deg,#ff9a44,#ff5f6d); color:#fff; box-shadow:0 8px 0 #00000055; }
+  #start button:active { transform:translateY(4px); box-shadow:0 4px 0 #00000055; }
+  #hint { position:fixed; bottom:2vh; left:0; right:0; z-index:5; text-align:center; color:rgba(255,255,255,.35);
+          font-size:min(2.2vh,3.4vw); font-weight:700; pointer-events:none; transition:opacity .6s; }
+  #tools { position:fixed; top:1.4vh; right:1.4vh; z-index:6; display:flex; gap:.8vh; opacity:.22; transition:opacity .3s; }
+  #tools:hover { opacity:1; }
+  #tools button, #tools select, #tools a { font:inherit; font-weight:800; font-size:1.9vh; padding:.4em .9em; border:0;
+                  border-radius:999px; background:rgba(255,255,255,.18); color:#fff; cursor:pointer;
+                  backdrop-filter:blur(6px); max-width:34vw; text-decoration:none; }
+  #tools select option { color:#222; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="stage">
+  <div id="art"></div>
+  <div id="label"></div>
+  <div id="sub"></div>
+</div>
+<canvas id="fx"></canvas>
+<div id="flash"></div>
+<div id="hint">Aperte qualquer tecla &nbsp;•&nbsp; Espaço = fogos &nbsp;•&nbsp; Enter = estrelas</div>
+<div id="tools">
+  <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
+  <select id="selVoice" title="Escolha a voz em português"><option>voz padrão</option></select>
+  <button id="btnTest" title="Ouvir esta voz">🔈 Testar</button>
+  <button id="btnModo" title="Alternar entre o som da letra e o nome da letra">🔤 Som da letra</button>
+  <button id="btnFull">⛶ Tela cheia</button>
+  <button id="btnVoice">🔊 Voz: ligada</button>
+</div>
+<div id="start">
+  <h1>Alfabeto Mágico</h1>
+  <p>Aperte uma <b>letra</b> e ouça o <b>som</b> dela. Aperte de novo e vira uma
+     <b>palavra com desenho</b>.<br>
+     Aperte um <b>número</b> e depois veja as <b>mãos com os dedos</b>.<br>
+     Espaço, Enter e vírgula fazem festa. 🎆</p>
+  <p id="voiceTip">O jogo fala o <b>som</b> da letra (/m/), não o nome (“ême”) — é o som
+     que serve para juntar e ler. Dá para trocar no botão 🔤.<br>
+     A qualidade da voz depende do que está instalado no computador: se soar robótica,
+     troque no seletor 🗣 ali em cima e prefira uma voz com
+     <b>“Natural”</b> ou <b>“Google”</b> no nome.</p>
+  <button id="btnStart">Começar!</button>
+</div>
+
+<!-- ordem importa: base → fonemas → audio → particulas → maos → conteudo → jogo -->
+<script src="../../lib/base.js"></script>
+<script src="../../lib/fonemas.js"></script>
+<script src="../../lib/audio.js"></script>
+<script src="../../lib/particulas.js"></script>
+<script src="../../lib/maos.js"></script>
+<script src="conteudo.js"></script>
+<script>
+/* ======================= ESTADO DO JOGO ======================= */
+const stage = $("stage"), artEl = $("art"), labelEl = $("label"),
+      subEl = $("sub"), hintEl = $("hint");
+
+const state = {};          // por tecla: {mode:0|1, idx:0}
+let started = false;
+
+/* modoSom = true  → fala o SOM da letra (método fônico, padrão)
+   modoSom = false → fala o NOME da letra (caso a voz instalada leia mal os
+   fonemas prolongados, ou para quem prefere ensinar o alfabeto primeiro) */
+let modoSom = true;
+
+function show(html, label, sub, color){
+  artEl.innerHTML = html || "";
+  labelEl.innerHTML = label || "";        // permite destacar a letra inicial
+  subEl.textContent = sub || "";
+  if(color) labelEl.style.color = color;
+  stage.classList.remove("pop");  void stage.offsetWidth;  stage.classList.add("pop");
+  artEl.classList.remove("idle"); void artEl.offsetWidth;  artEl.classList.add("idle");
+}
+
+function st(key){ if(!state[key]) state[key] = {mode:0, idx:0}; return state[key]; }
+
+/* ======================= LETRAS ======================= */
+function showLetter(L){
+  const s = st(L), color = pick(PALETTE), som = SOM[L];
+  if(s.mode === 0){
+    /* 1º toque — a letra e O SOM DELA.
+       Maiúscula e minúscula juntas: são a mesma letra.
+       Na tela vai o fonema entre barras; o nome fica só de apoio. */
+    show(`<div class="glyph" style="color:${color}">${L}<span class="lower">${L.toLowerCase()}</span></div>`,
+         "", modoSom ? "som " + som.ipa : "letra " + LETTER_NAME[L], color);
+    if(modoSom) speakSeq(som.fala, {rate:.85});
+    else        speak("a letra " + LETTER_NAME[L], {rate:.9});
+    s.mode = 1;
+  } else {
+    /* 2º toque — palavra com desenho.
+       ALITERAÇÃO: repete o ataque e só então diz a palavra ("ma, ma, maçã").
+       A letra inicial acende na tela para o olho ligar o som que ouviu à
+       letra que vê. Isto substitui a fórmula "M de Maçã". */
+    const list = WORDS[L] || [L];
+    const word = list[s.idx % list.length];
+    s.idx++;
+    const art = ART[norm(word)];
+    const svg = (norm(word) === "dedo") ? handsSVG(1) : (art ? svgWrap(art) : "");
+    const on = ONSET[word];
+    show(svg, `<span class="on">${word[0]}</span>${word.slice(1)}`,
+         modoSom ? "começa com " + som.ipa : L + " de " + word, color);
+    if(modoSom && on) speakSeq([on + ", " + on + ", " + say(word)], {rate:.88});
+    else              speakSeq([say(word), LETTER_NAME[L] + " de " + say(word)], {rate:.92});
+    s.mode = 0;
+  }
+  sPop(); sprinkle(innerWidth/2, innerHeight*.62, color);
+  shiftBg(23);
+}
+
+/* ======================= NÚMEROS ======================= */
+const NUM_NAME = ["zero","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez"];
+
+function showNumber(n){
+  const s = st("#"+n), color = pick(PALETTE);
+  if(s.mode === 0){
+    show(`<div class="glyph" style="color:${color}">${n}</div>`, "", NUM_NAME[n], color);
+    speak("o número " + NUM_NAME[n], {rate:.9});
+    s.mode = 1;
+  } else {
+    /* Mãos: além de mostrar a quantidade, a voz CONTA em voz alta.
+       Contagem um-a-um leva à cardinalidade (o último número dito é o total).
+       Acima de 5 usamos composição: "cinco e dois". */
+    const plural = n === 1 ? " dedo" : " dedos";
+    let fala;
+    if(n === 0)     fala = ["zero", "nenhum dedo levantado"];
+    else if(n <= 5) fala = [NUM_NAME.slice(1, n+1).join(", "), NUM_NAME[n] + plural];
+    else            fala = ["cinco e " + NUM_NAME[n-5], NUM_NAME[n] + plural];
+    show(handsSVG(n), String(n), n === 0 ? "nenhum dedo" : NUM_NAME[n] + plural, color);
+    speakSeq(fala, {rate:.9});
+    s.mode = 0;
+  }
+  sPop(); sprinkle(innerWidth/2, innerHeight*.62, color);
+  shiftBg(23);
+}
+
+/* ======================= TECLADO ======================= */
+const PUNCT = {
+  ",": "vírgula", ".": "ponto", ";": "ponto e vírgula", ":": "dois pontos",
+  "!": "exclamação", "?": "interrogação", "-": "traço", "+": "mais", "=": "igual",
+  "/": "barra", "*": "estrela", "@": "arroba", "'": "apóstrofo"
+};
+
+function onKey(e){
+  if(e.key === "F5" || e.key === "F11" || e.key === "F12") return;   // deixa o navegador cuidar
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  e.preventDefault();
+  if(!started) return;
+  hintEl.style.opacity = "0";
+
+  const k = e.key;
+
+  if(k === " "){
+    const h = (Math.random()*360)|0;
+    fireworks(rnd(innerWidth*.2, innerWidth*.8), rnd(innerHeight*.2, innerHeight*.55), h);
+    setTimeout(() => fireworks(rnd(innerWidth*.15,innerWidth*.85), rnd(innerHeight*.15,innerHeight*.5), h+120), 260);
+    setTimeout(() => fireworks(rnd(innerWidth*.15,innerWidth*.85), rnd(innerHeight*.2, innerHeight*.6), h+240), 520);
+    speak("Fogos de artifício!");
+    shiftBg(47); return;
+  }
+  if(k === "Enter"){ starBurst(); rainbowFlash(); speak("Estrelas!"); shiftBg(63); return; }
+  if(k === "Shift"){ rainbowFlash(); shiftBg(29); return; }
+  if(k === "Backspace" || k === "Delete"){
+    show("", "", ""); limparParticulas(); sSwoosh(); shiftBg(97); return;
+  }
+  if(k.startsWith("Arrow")){ streak(k); shiftBg(17); return; }
+  if(k === "Tab" || k === "CapsLock" || k === "Control" || k === "Alt" || k === "Escape"){ rainbowFlash(); return; }
+
+  if(/^[0-9]$/.test(k)){ showNumber(+k); return; }
+
+  const L = norm(k).toUpperCase();
+  if(L.length === 1 && L >= "A" && L <= "Z"){ showLetter(L); return; }
+
+  if(PUNCT[k]){
+    confetti();
+    show(`<div class="glyph" style="color:${pick(PALETTE)}">${k}</div>`, "", PUNCT[k]);
+    speak(PUNCT[k]); shiftBg(41); return;
+  }
+  confetti(); shiftBg(31);   // qualquer outro símbolo
+}
+addEventListener("keydown", onKey);
+
+// toque na tela também gera efeito (tablets)
+addEventListener("pointerdown", ev => {
+  if(!started) return;
+  fireworks(ev.clientX, ev.clientY, (Math.random()*360)|0);
+});
+
+/* ======================= CONTROLES ======================= */
+$("btnStart").addEventListener("click", () => {
+  started = true;
+  $("start").remove();
+  try{ ac().resume(); }catch(e){}     // o navegador só libera áudio após um clique
+  speak("Vamos brincar!");
+  rainbowFlash();
+});
+$("btnFull").addEventListener("click", () => {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.();
+});
+$("btnVoice").addEventListener("click", () => {
+  voiceOn = !voiceOn;
+  $("btnVoice").textContent = voiceOn ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
+  if(!voiceOn && window.speechSynthesis) speechSynthesis.cancel();
+});
+function testVoice(){
+  if(modoSom) speakSeq(["mmmm", "ma, ma, maçã"], {rate:.88});
+  else        speakSeq(["a letra ême", "Maçã. Ême de Maçã."], {rate:.95});
+}
+$("btnModo").addEventListener("click", () => {
+  modoSom = !modoSom;
+  $("btnModo").textContent = modoSom ? "🔤 Som da letra" : "🔤 Nome da letra";
+  testVoice();
+});
+$("selVoice").addEventListener("change", e => {
+  chosenVoice = ptVoices[+e.target.value] || null;
+  testVoice();
+  e.target.blur();
+});
+$("btnTest").addEventListener("click", testVoice);
+// evita que os botões roubem o foco do teclado
+document.querySelectorAll("#tools button, #tools select").forEach(b =>
+  b.addEventListener("mouseup", () => setTimeout(() => b.blur(), 0)));
+</script>
+</body>
+</html>

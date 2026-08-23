@@ -1,0 +1,13 @@
+# sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# rascunhos e renders de conferência
+_*.png
+_*.js
+_*.txt
+/tmp/
+
+# nada de node aqui: os jogos são HTML puro, sem build
+node_modules/

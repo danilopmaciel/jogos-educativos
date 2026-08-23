@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jogos para Aprender</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { min-height:100%; font-family:"Baloo 2","Comic Sans MS","Trebuchet MS",system-ui,sans-serif;
+              background:radial-gradient(circle at 50% 20%, hsl(255 70% 28%), hsl(258 72% 10%) 70%);
+              color:#fff; }
+  main { max-width:60em; margin:0 auto; padding:8vh 6vw 10vh; }
+  h1 { font-size:min(8vh,10vw); font-weight:900; line-height:1.1;
+       background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
+       -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub { font-size:min(2.6vh,4vw); opacity:.6; margin-top:1.2vh; max-width:34em; line-height:1.5; }
+  .grid { display:grid; gap:2.4vh; margin-top:5vh;
+          grid-template-columns:repeat(auto-fill, minmax(15em, 1fr)); }
+  a.card { display:block; text-decoration:none; color:inherit; border-radius:1.4em; padding:1.6em;
+           background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+           transition:transform .18s ease, background .18s ease; }
+  a.card:hover { transform:translateY(-4px); background:rgba(255,255,255,.14); }
+  .card .emoji { font-size:3em; line-height:1; }
+  .card h2 { font-size:1.35em; margin:.5em 0 .25em; }
+  .card p { font-size:.95em; opacity:.65; line-height:1.45; }
+  .soon { opacity:.35; pointer-events:none; border-style:dashed; }
+  footer { margin-top:8vh; font-size:.9em; opacity:.35; line-height:1.6; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Jogos para Aprender</h1>
+  <p class="sub">Jogos de teclado para crianças pequenas. Cada tecla responde na hora,
+     com desenho, som e um pouco de festa.</p>
+
+  <div class="grid">
+    <a class="card" href="jogos/alfabeto-magico/index.html">
+      <div class="emoji">🔤</div>
+      <h2>Alfabeto Mágico</h2>
+      <p>Letras, o som de cada uma, palavras com desenho e números com os dedos da mão.</p>
+    </a>
+
+    <div class="card soon">
+      <div class="emoji">➕</div>
+      <h2>Em breve</h2>
+      <p>Espaço para o próximo mini-game. Veja o CLAUDE.md para o passo a passo.</p>
+    </div>
+  </div>
+
+  <footer>
+    HTML puro, sem instalação e sem internet. Funciona com duplo clique.
+  </footer>
+</main>
+</body>
+</html>
