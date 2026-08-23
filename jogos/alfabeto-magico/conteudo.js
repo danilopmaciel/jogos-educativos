@@ -19,22 +19,24 @@ const WORDS = {
   M:["MAÇÃ","MONTANHA"], N:["NUVEM","NAVIO"],   O:["OLHO","OVO"],
   P:["PATO","PEIXE"],    Q:["QUEIJO","QUADRADO"], R:["RATO","ROSA"],
   S:["SOL","SAPO"],      T:["TARTARUGA","TREM"], U:["UVA","URSO"],
-  V:["VACA","VIOLÃO"],   W:["WATT","WI-FI"],    X:["XÍCARA","XADREZ"],
+  V:["VACA","VIOLÃO"],   W:["WAFFLE","WI-FI"],    X:["XÍCARA","XADREZ"],
   Y:["YOGA","YETI"],     Z:["ZEBRA","ZERO"]
 };
 
 /* Sílaba inicial, para a aliteração ("ma, ma, maçã"). Repetir o ataque antes
    de dizer a palavra inteira é o exercício central de consciência fonológica.
-   Repare no H: a sílaba é só a vogal, porque o agá não soa. */
+   Repare no H: a sílaba é só a vogal, porque o agá não soa.
+   Vogal sozinha vai ACENTUADA ("ó", não "o"). Sem acento o sintetizador lê
+   o artigo/conjunção e reduz: "o" sai [u] e "e" sai [i]. */
 const ONSET = {
-  ABELHA:"a", ANEL:"a", BOLA:"bo", BANANA:"ba", CASA:"ca", CACHORRO:"ca",
-  DADO:"da", DEDO:"de", ESTRELA:"es", ELEFANTE:"e", FLOR:"flo", FOGUETE:"fo",
+  ABELHA:"á", ANEL:"á", BOLA:"bo", BANANA:"ba", CASA:"ca", CACHORRO:"ca",
+  DADO:"da", DEDO:"de", ESTRELA:"es", ELEFANTE:"é", FLOR:"flo", FOGUETE:"fo",
   GATO:"ga", GALINHA:"ga", HIPOPÓTAMO:"i", HÉLICE:"é", ILHA:"i", IGREJA:"i",
   JANELA:"ja", JACARÉ:"ja", KIWI:"qui", KOALA:"co", LUA:"lu", "LEÃO":"le",
-  "MAÇÃ":"ma", MONTANHA:"mon", NUVEM:"nu", NAVIO:"na", OLHO:"o", OVO:"o",
+  "MAÇÃ":"ma", MONTANHA:"mon", NUVEM:"nu", NAVIO:"na", OLHO:"ó", OVO:"ó",
   PATO:"pa", PEIXE:"pei", QUEIJO:"quei", QUADRADO:"qua", RATO:"ra", ROSA:"ro",
-  SOL:"so", SAPO:"sa", TARTARUGA:"tar", TREM:"tre", UVA:"u", URSO:"ur",
-  VACA:"va", "VIOLÃO":"vi", WATT:"vá", "WI-FI":"uái", "XÍCARA":"xi", XADREZ:"xa",
+  SOL:"so", SAPO:"sa", TARTARUGA:"tar", TREM:"tre", UVA:"ú", URSO:"ur",
+  VACA:"va", "VIOLÃO":"vi", WAFFLE:"uá", "WI-FI":"uái", "XÍCARA":"xi", XADREZ:"xa",
   YOGA:"io", YETI:"ié", ZEBRA:"ze", ZERO:"ze"
 };
 
@@ -402,14 +404,14 @@ ART.violao = `
   <circle cx="60" cy="72" r="12" fill="#4e342e"/>
   <g stroke="#fdfdff" stroke-width="1.6"><path d="M55 46 V104 M60 46 V104 M65 46 V104"/></g>`;
 
-ART.watt = `
-  <g stroke="#ffb300" stroke-width="6">
-    <path d="M60 6 v10 M20 24 l8 8 M100 24 l-8 8 M6 62 h11 M103 62 h11"/></g>
-  <path d="M60 18 q-31 0 -31 29 q0 17 13 26 q6 4 6 11 h24 q0 -7 6 -11 q13 -9 13 -26 q0 -29 -31 -29z" fill="#ffe082"/>
-  <path d="M48 52 q6 -12 12 0 q6 12 12 0" stroke="#ff9800" stroke-width="3.5"/>
-  <rect x="45" y="84" width="30" height="11" rx="4" fill="#b0bec5"/>
-  <rect x="47" y="95" width="26" height="10" rx="4" fill="#90a4ae"/>
-  <path d="M52 105 h16 v6 q0 4 -8 4 q-8 0 -8 -4z" fill="#78909c"/>`;
+ART.waffle = `
+  <rect x="18" y="24" width="84" height="76" rx="12" fill="#e0a458"/>
+  <g stroke="#a86e2e" stroke-width="4">
+    <path d="M18 48 h84 M18 72 h84 M42 24 v76 M66 24 v76 M90 24 v76"/></g>
+  <rect x="18" y="24" width="84" height="76" rx="12"/>
+  <rect x="46" y="36" width="30" height="22" rx="4" fill="#fff59d"/>
+  <path d="M60 36 q-8 -14 6 -18 q10 -3 12 6 q2 10 -8 12" fill="#ef5350"/>
+  <path d="M60 22 v-8" stroke="#43a047" stroke-width="4"/>`;
 
 ART.wifi = `
   <g stroke="#4fc3f7" stroke-width="11" stroke-linecap="round" fill="none">
@@ -484,7 +486,7 @@ ART.zero = `
 /* --------------------------- BANCO DE RESERVA ---------------------------
    Desenhos prontos que hoje não estão em WORDS. GIRAFA e IOIÔ saíram por
    coerência fonema–grafema (girafa soa /ʒ/, não /g/; ioiô se escreve com I).
-   WAFFLE saiu porque nenhuma grafia fonética soava bem na voz sintetizada.
+   WATT saiu por coerência também: "váti" começa em /v/, e a letra W ensina /w/.
    Ficam aqui para outros jogos aproveitarem. */
 
 ART.girafa = `
@@ -509,11 +511,11 @@ ART.ioio = `
   <circle cx="60" cy="70" r="12" fill="#fdfdff"/>
   <circle cx="60" cy="70" r="4" fill="#241f3d"/>`;
 
-ART.waffle = `
-  <rect x="18" y="24" width="84" height="76" rx="12" fill="#e0a458"/>
-  <g stroke="#a86e2e" stroke-width="4">
-    <path d="M18 48 h84 M18 72 h84 M42 24 v76 M66 24 v76 M90 24 v76"/></g>
-  <rect x="18" y="24" width="84" height="76" rx="12"/>
-  <rect x="46" y="36" width="30" height="22" rx="4" fill="#fff59d"/>
-  <path d="M60 36 q-8 -14 6 -18 q10 -3 12 6 q2 10 -8 12" fill="#ef5350"/>
-  <path d="M60 22 v-8" stroke="#43a047" stroke-width="4"/>`;
+ART.watt = `
+  <g stroke="#ffb300" stroke-width="6">
+    <path d="M60 6 v10 M20 24 l8 8 M100 24 l-8 8 M6 62 h11 M103 62 h11"/></g>
+  <path d="M60 18 q-31 0 -31 29 q0 17 13 26 q6 4 6 11 h24 q0 -7 6 -11 q13 -9 13 -26 q0 -29 -31 -29z" fill="#ffe082"/>
+  <path d="M48 52 q6 -12 12 0 q6 12 12 0" stroke="#ff9800" stroke-width="3.5"/>
+  <rect x="45" y="84" width="30" height="11" rx="4" fill="#b0bec5"/>
+  <rect x="47" y="95" width="26" height="10" rx="4" fill="#90a4ae"/>
+  <path d="M52 105 h16 v6 q0 4 -8 4 q-8 0 -8 -4z" fill="#78909c"/>`;

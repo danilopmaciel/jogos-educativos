@@ -6,7 +6,14 @@
 <title>Alfabeto Mágico</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html,body { height:100%; overflow:hidden; background:#12102a; font-family:"Baloo 2","Comic Sans MS","Trebuchet MS",system-ui,sans-serif; }
+  /* trava de criança, lado visual: sem seleção de texto, sem menu de toque,
+     sem puxar-para-recarregar e sem deslizar-para-voltar no tablet. */
+  html,body { height:100%; overflow:hidden; background:#12102a; font-family:"Baloo 2","Comic Sans MS","Trebuchet MS",system-ui,sans-serif;
+              user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+              touch-action:none; overscroll-behavior:none; }
+  img,svg { -webkit-user-drag:none; user-drag:none; }
+  /* travado: os controles somem, senão a criança clica em "← Jogos" e sai */
+  body.travado #tools { opacity:0; pointer-events:none; }
   #bg { position:fixed; inset:0; transition:background 700ms ease; z-index:0;
         background:radial-gradient(circle at 50% 45%, hsl(250 70% 30%), hsl(255 70% 12%) 70%); }
   #fx { position:fixed; inset:0; z-index:3; pointer-events:none; }
@@ -32,7 +39,7 @@
   #start h1 { font-size:min(9vh,11vw); font-weight:900; background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
               -webkit-background-clip:text; background-clip:text; color:transparent; }
   #start p { font-size:min(3.2vh,4.6vw); opacity:.85; max-width:26em; line-height:1.5; }
-  #voiceTip { font-size:min(2.2vh,3.4vw) !important; opacity:.55 !important; max-width:30em;
+  #lockTip, #voiceTip { font-size:min(2.2vh,3.4vw) !important; opacity:.55 !important; max-width:30em;
               border-top:1px solid rgba(255,255,255,.15); padding-top:2vh; }
   #start button { font:inherit; font-size:min(3.4vh,5vw); font-weight:800; padding:.7em 1.6em; border:0; cursor:pointer;
                   border-radius:999px; background:linear-gradient(90deg,#ff9a44,#ff5f6d); color:#fff; box-shadow:0 8px 0 #00000055; }
@@ -56,13 +63,14 @@
 </div>
 <canvas id="fx"></canvas>
 <div id="flash"></div>
-<div id="hint">Aperte qualquer tecla &nbsp;•&nbsp; Espaço = fogos &nbsp;•&nbsp; Enter = estrelas</div>
+<div id="hint">Aperte qualquer tecla &nbsp;•&nbsp; Espaço = fogos &nbsp;•&nbsp; Enter = estrelas &nbsp;•&nbsp; segure ESC = sair</div>
 <div id="tools">
   <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
   <select id="selVoice" title="Escolha a voz em português"><option>voz padrão</option></select>
   <button id="btnTest" title="Ouvir esta voz">🔈 Testar</button>
   <button id="btnModo" title="Alternar entre o som da letra e o nome da letra">🔤 Som da letra</button>
   <button id="btnFull">⛶ Tela cheia</button>
+  <button id="btnTrava" title="Tela cheia + bloqueia as teclas do sistema (Chrome/Edge)">🔓 Travar teclado</button>
   <button id="btnVoice">🔊 Voz: ligada</button>
 </div>
 <div id="start">
@@ -71,6 +79,10 @@
      <b>palavra com desenho</b>.<br>
      Aperte um <b>número</b> e depois veja as <b>mãos com os dedos</b>.<br>
      Espaço, Enter e vírgula fazem festa. 🎆</p>
+  <p id="lockTip">🔒 O jogo abre <b>travado</b>: tela cheia, e a tecla Windows, o Alt+Tab
+     e o Ctrl+W ficam presos aqui dentro. Para sair, <b>segure ESC</b> por um segundo.<br>
+     A trava das teclas de sistema depende do Chrome ou do Edge — em outros navegadores
+     vale só a tela cheia. Ctrl+Alt+Del nenhuma página segura.</p>
   <p id="voiceTip">O jogo fala o <b>som</b> da letra (/m/), não o nome (“ême”) — é o som
      que serve para juntar e ler. Dá para trocar no botão 🔤.<br>
      A qualidade da voz depende do que está instalado no computador: se soar robótica,
@@ -85,6 +97,7 @@
 <script src="../../lib/audio.js"></script>
 <script src="../../lib/particulas.js"></script>
 <script src="../../lib/maos.js"></script>
+<script src="../../lib/trava.js"></script>
 <script src="conteudo.js"></script>
 <script>
 /* ======================= ESTADO DO JOGO ======================= */
@@ -177,8 +190,11 @@ const PUNCT = {
 };
 
 function onKey(e){
-  if(e.key === "F5" || e.key === "F11" || e.key === "F12") return;   // deixa o navegador cuidar
-  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  /* Destravado, o navegador continua dono dos atalhos do adulto. Travado,
+     trava.js já engoliu o efeito da tecla — então aqui ela pode virar festa,
+     que é a promessa do jogo: nenhuma tecla fica muda. */
+  if(!travaOn && (e.key === "F5" || e.key === "F11" || e.key === "F12")) return;
+  if(!travaOn && (e.metaKey || e.ctrlKey || e.altKey)) return;
   e.preventDefault();
   if(!started) return;
   hintEl.style.opacity = "0";
@@ -226,6 +242,7 @@ $("btnStart").addEventListener("click", () => {
   started = true;
   $("start").remove();
   try{ ac().resume(); }catch(e){}     // o navegador só libera áudio após um clique
+  travar();                           // o mesmo clique também autoriza a tela cheia
   speak("Vamos brincar!");
   rainbowFlash();
 });
@@ -253,6 +270,11 @@ $("selVoice").addEventListener("change", e => {
   e.target.blur();
 });
 $("btnTest").addEventListener("click", testVoice);
+$("btnTrava").addEventListener("click", travaToggle);
+document.addEventListener("trava", e => {
+  document.body.classList.toggle("travado", e.detail.on);
+  $("btnTrava").textContent = e.detail.on ? "🔒 Travado" : "🔓 Travar teclado";
+});
 // evita que os botões roubem o foco do teclado
 document.querySelectorAll("#tools button, #tools select").forEach(b =>
   b.addEventListener("mouseup", () => setTimeout(() => b.blur(), 0)));

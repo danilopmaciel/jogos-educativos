@@ -26,12 +26,15 @@ lib/            biblioteca compartilhada — carregue nesta ordem:
   audio.js        tone/sons + motor de voz (voiceOn, speakSeq, speak)
   particulas.js   fogos, confete, estrelas, riscos, rainbowFlash
   maos.js         handsSVG(0..10) — luva de desenho com os dedos
+  trava.js        trava de criança: travar/destravar/travaToggle, travaOn
 jogos/
   alfabeto-magico/
     index.html      HTML, CSS e lógica do jogo
     conteudo.js     WORDS, ONSET e os 54 desenhos (ART)
 ```
 
+`lib/trava.js` não espera nada no HTML — cria o próprio aviso e avisa mudanças
+pelo evento `trava` em `document` (`detail:{on, forte}`).
 `lib/particulas.js` espera `<canvas id="fx">` e `<div id="flash">` na página.
 `lib/base.js` espera `<div id="bg">`. `lib/audio.js` usa `<select id="selVoice">`
 se existir.
@@ -58,9 +61,20 @@ Estas escolhas vieram de discussão com o usuário e têm razão de ser:
    o mesmo som inicial. Por isso G é GATO/GALINHA, não GIRAFA (que soa /ʒ/).
    Ao acrescentar palavras, respeite isso.
 
-5. **Maiúscula e minúscula juntas** na tela: são a mesma letra.
+5. **Vogal vai sempre acentuada** — em `SOM` e em `ONSET`. O método fônico
+   brasileiro parte do som aberto (/a/, /ɛ/, /i/, /ɔ/, /u/), e há um motivo
+   técnico junto: vogal átona reduz em português, e a voz sintetizada lê "o"
+   solto como o artigo (= [u]) e "e" solto como a conjunção (= [i]). Foi assim
+   que o O passou a soar como U. "ó" e "é" são tônicos por definição e não têm
+   para onde reduzir. Nunca escreva um `fala` ou `ONSET` de vogal sem acento.
 
-6. **Números contam em voz alta** um a um antes de dizer o total — é o caminho
+6. **Não repita a mesma sílaba duas vezes.** O par das oclusivas ("ba, bo")
+   existe para VARIAR a vogal: o invariante entre as duas é a consoante, e é
+   isso que a criança tem que isolar. "ôh, ôh" não isola nada.
+
+7. **Maiúscula e minúscula juntas** na tela: são a mesma letra.
+
+8. **Números contam em voz alta** um a um antes de dizer o total — é o caminho
    para a cardinalidade. Acima de 5 usa composição ("cinco e dois, sete").
 
 ## Voz sintetizada — o que já foi tentado
@@ -85,10 +99,33 @@ voz no seletor, não mexer nos parâmetros.
 
 1. Crie `jogos/<nome>/index.html`.
 2. Inclua as libs que precisar, **nesta ordem**: base → fonemas → audio →
-   particulas → maos.
+   particulas → maos → trava.
 3. Ponha os dados do jogo num `conteudo.js` ao lado, não no HTML.
 4. Adicione um card em `index.html` da raiz.
 5. Deixe um link `← Jogos` no canto, como o Alfabeto Mágico tem.
+
+## Trava de criança (`lib/trava.js`)
+
+Como no tinyfingers: enquanto a criança bate no teclado, nada pode tirá-la do
+jogo. O que é possível e o que não é:
+
+- **Tecla Windows, Alt+Tab, Ctrl+W, F5** — só a Keyboard Lock API segura, e ela
+  exige **tela cheia** e **Chromium** (Chrome/Edge). É por isso que o
+  tinyfingers força tela cheia: não é estilo, é a única via. `file://` conta
+  como contexto seguro, então o jogo offline funciona.
+- **Ctrl+Alt+Del** — nenhuma página do mundo bloqueia. Não tente.
+- **Se a tela cheia falhar, `travar()` RECUSA e avisa** em vez de ligar o
+  cadeado. Um cadeado que mente é pior que nenhum: o adulto sai de perto
+  confiando nele.
+- **Botão direito, botão do meio, arrastar, selecionar, duplo clique** ficam
+  bloqueados **sempre**, travado ou não — num jogo de criança nada disso serve.
+  O **clique esquerdo continua livre**: é ele que dispara os efeitos.
+- **Saída do adulto: segurar ESC por 1,5 s.** É de propósito o mesmo gesto que
+  o Chrome já exige com keyboard lock, para os dois estados não brigarem.
+- Travado, `body` ganha a classe `travado` e o `#tools` some — senão a criança
+  clica em "← Jogos" e sai.
+- Travado, **toda** tecla vira efeito, inclusive Ctrl+alguma-coisa: o atalho já
+  foi engolido, então não há motivo para a tecla ficar muda.
 
 ## Como testar
 
@@ -104,5 +141,5 @@ Não há suíte de testes. O que dá para automatizar:
 
 Alfabeto Mágico está completo: 26 letras com som, 52 palavras com desenho,
 números de 0 a 9 com as mãos, efeitos em espaço/enter/setas/pontuação.
-`ART` tem três desenhos de reserva fora de uso (girafa, ioiô, waffle) — a razão
+`ART` tem três desenhos de reserva fora de uso (girafa, ioiô, watt) — a razão
 de cada um está comentada no fim de `conteudo.js`.
