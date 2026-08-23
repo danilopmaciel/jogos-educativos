@@ -55,7 +55,7 @@
 
 <div id="hud">
   <div id="score">⭐ 0 meteoros</div>
-  <div style="font-size:11px; opacity:0.6; font-weight:800; color:#fff;">v1.3.0</div>
+  <div style="font-size:11px; opacity:0.6; font-weight:800; color:#fff;">v1.4.0</div>
 </div>
 
 <div id="hint">◄ ► Gira &nbsp;•&nbsp; ▲ Impulso &nbsp;•&nbsp; Espaço/Tiro = Feixes de luz</div>
@@ -63,10 +63,11 @@
 <div id="tools">
   <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
   <select id="selSpeed" title="Escolha a velocidade do jogo">
-    <option value="0.25">🐢 25% (Super Calmo)</option>
-    <option value="0.5" selected>🚀 50% (Padrão Infantil)</option>
-    <option value="0.75">⚡ 75% (Médio)</option>
-    <option value="1.0">🏎️ 100% (Rápido)</option>
+    <option value="0.10" selected>🦥 10% (Super Lento)</option>
+    <option value="0.20">🐢 20% (Bem Calmo)</option>
+    <option value="0.40">🚀 40% (Moderado)</option>
+    <option value="0.80">⚡ 80% (Rápido)</option>
+    <option value="1.00">🏎️ 100% (Máximo)</option>
   </select>
   <button id="btnFull" title="Tela cheia">⛶ Tela cheia</button>
   <button id="btnTrava" title="Tela cheia + bloqueia teclas de sistema">🔓 Travar teclado</button>
@@ -74,25 +75,25 @@
 </div>
 
 <div id="start">
-  <h1>Nave no Espaço <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.3.0</span></h1>
+  <h1>Nave no Espaço <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.4.0</span></h1>
   <p>Voe com a sua nave triângulo pelo cosmos e atire feixes de luz para transformar meteoros em estrelas! 🚀✨</p>
   <p class="controls-tip">
     🕹️ <b>Teclado ou Controle:</b> Setas (ou A/D/W) para pilotar e <b>Espaço/Enter</b> para atirar.<br>
     📱 <b>No celular:</b> Use os botões de controle na parte inferior ou toque na tela!<br>
-    ⚙️ <b>Velocidade:</b> Ajuste no seletor 🚀 50% no topo a qualquer momento.
+    ⚙️ <b>Velocidade:</b> Começando em 🦥 10% super calmo, ajustável no topo.
   </p>
   <button id="btnStart">Decolar!</button>
 </div>
 
 <!-- Scripts compartilhados -->
 <script>window.CONTROLES_DEFAULT_MODE = "gamepad";</script>
-<script src="../../lib/base.js?v=4"></script>
-<script src="../../lib/fonemas.js?v=4"></script>
-<script src="../../lib/audio.js?v=4"></script>
-<script src="../../lib/particulas.js?v=4"></script>
-<script src="../../lib/maos.js?v=4"></script>
-<script src="../../lib/trava.js?v=4"></script>
-<script src="../../lib/controles.js?v=4"></script>
+<script src="../../lib/base.js?v=5"></script>
+<script src="../../lib/fonemas.js?v=5"></script>
+<script src="../../lib/audio.js?v=5"></script>
+<script src="../../lib/particulas.js?v=5"></script>
+<script src="../../lib/maos.js?v=5"></script>
+<script src="../../lib/trava.js?v=5"></script>
+<script src="../../lib/controles.js?v=5"></script>
 
 <script>
 /* ============================================================================
@@ -102,7 +103,7 @@ const gcv = $("gameCanvas"), gctx = gcv.getContext("2d");
 let scoreCount = 0;
 let started = false;
 let soundOn = true;
-let gameSpeed = 0.5; // Padrão: 50% (mais calmo e suave para crianças)
+let gameSpeed = 0.10; // Padrão: 10% (progressão geométrica: 10%, 20%, 40%, 80%, 100%)
 
 /* Configuração do tamanho do Canvas de jogo */
 function resizeGame(){
@@ -139,7 +140,7 @@ function softFlash(){
   if(!flashEl) return;
   flashEl.style.background = `linear-gradient(${(Math.random()*360)|0}deg,
     #ff5f6d,#ffb347,#ffd23f,#7ee787,#4fd1c5,#6ec6ff,#a78bfa)`;
-  flashEl.animate([{opacity:0},{opacity:.22},{opacity:0}], {duration:600, easing:"ease-out"});
+  flashEl.animate([{opacity:0},{opacity:.20},{opacity:0}], {duration:600, easing:"ease-out"});
   sSparkle();
 }
 
@@ -148,12 +149,12 @@ function softFlash(){
    ========================================================================== */
 
 /* Fundo estelar dinâmico suave */
-const bgStars = Array.from({length: 70}, () => ({
+const bgStars = Array.from({length: 65}, () => ({
   x: Math.random() * innerWidth,
   y: Math.random() * innerHeight,
-  r: rnd(0.7, 2.0),
-  alpha: rnd(0.15, 0.65),
-  pulse: rnd(0.005, 0.015)
+  r: rnd(0.7, 1.8),
+  alpha: rnd(0.15, 0.6),
+  pulse: rnd(0.004, 0.012)
 }));
 
 /* Nave espacial (Triângulo) */
@@ -183,7 +184,7 @@ function createAsteroid(x, y, radius, level, char){
   }
   const color = pick(PALETTE);
   const angVel = rnd(-0.01, 0.01);
-  const baseSpeed = rnd(0.4, 0.9) / (level === 1 ? 1 : level === 2 ? 0.8 : 0.6);
+  const baseSpeed = rnd(0.6, 1.2) / (level === 1 ? 1 : level === 2 ? 0.8 : 0.6);
   const moveAngle = Math.random() * Math.PI * 2;
 
   // Letra ou número aleatório para meteoros grandes
@@ -224,15 +225,15 @@ function shoot(){
   if(!started) return;
   const tipX = ship.x + Math.cos(ship.angle) * ship.size;
   const tipY = ship.y + Math.sin(ship.angle) * ship.size;
-  const bulletSpeed = 7 + 4 * gameSpeed;
+  const bulletBaseSpeed = 8;
 
   bullets.push({
     x: tipX,
     y: tipY,
-    vx: Math.cos(ship.angle) * bulletSpeed + ship.vx * 0.3,
-    vy: Math.sin(ship.angle) * bulletSpeed + ship.vy * 0.3,
+    vx: Math.cos(ship.angle) * bulletBaseSpeed + ship.vx * 0.2,
+    vy: Math.sin(ship.angle) * bulletBaseSpeed + ship.vy * 0.2,
     angle: ship.angle,
-    life: Math.round(55 / (0.4 + 0.6 * gameSpeed)),
+    life: Math.round(50 / Math.max(0.08, gameSpeed)),
     color: pick(PALETTE)
   });
 
@@ -255,7 +256,6 @@ function onKeyDown(e){
     shoot();
   }
 
-  // Qualquer letra digitada pode gerar um disparo especial com som
   if(/^[a-zA-Z0-9]$/.test(e.key)){
     shoot();
     const L = e.key.toUpperCase();
@@ -290,7 +290,7 @@ function updateAndRender(){
   // 1. Fundo estelar suave
   bgStars.forEach(s => {
     s.alpha += s.pulse;
-    if(s.alpha > 0.7 || s.alpha < 0.15) s.pulse = -s.pulse;
+    if(s.alpha > 0.65 || s.alpha < 0.15) s.pulse = -s.pulse;
     gctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.1, s.alpha)})`;
     gctx.beginPath();
     gctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -299,8 +299,8 @@ function updateAndRender(){
 
   if(started){
     // 2. Movimentação da nave
-    const currentRotSpeed = 0.045 * (0.5 + 0.5 * gameSpeed);
-    const currentThrust = 0.16 * (0.4 + 0.6 * gameSpeed);
+    const currentRotSpeed = 0.045 * Math.max(0.5, gameSpeed);
+    const currentThrust = 0.18 * gameSpeed;
 
     if(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]){
       ship.angle -= currentRotSpeed;
@@ -318,14 +318,14 @@ function updateAndRender(){
       const tailX = ship.x - Math.cos(ship.angle) * (ship.size * 0.8);
       const tailY = ship.y - Math.sin(ship.angle) * (ship.size * 0.8);
       sprinkle(tailX + rnd(-2, 2), tailY + rnd(-2, 2), pick(["#ff5f6d", "#ff9a44", "#ffd23f"]));
-      if(Math.random() < 0.2) sThrust();
+      if(Math.random() < 0.15) sThrust();
     }
 
-    // Inércia suave
+    // Inércia estritamente proporcional
     ship.vx *= 0.985;
     ship.vy *= 0.985;
-    ship.x += ship.vx;
-    ship.y += ship.vy;
+    ship.x += ship.vx * (gameSpeed / 0.5);
+    ship.y += ship.vy * (gameSpeed / 0.5);
 
     // Screen wrap da nave
     if(ship.x < -ship.size) ship.x = innerWidth + ship.size;
@@ -338,8 +338,8 @@ function updateAndRender(){
     // 3. Atualiza e desenha tiros (traços laser com brilho suave)
     for(let i = bullets.length - 1; i >= 0; i--){
       const b = bullets[i];
-      b.x += b.vx;
-      b.y += b.vy;
+      b.x += b.vx * (gameSpeed / 0.5);
+      b.y += b.vy * (gameSpeed / 0.5);
       b.life--;
 
       if(b.x < 0) b.x = innerWidth;
@@ -355,13 +355,13 @@ function updateAndRender(){
       // Desenha o traço do tiro sem ofuscar
       gctx.save();
       gctx.strokeStyle = b.color;
-      gctx.lineWidth = 2.8;
+      gctx.lineWidth = 2.6;
       gctx.lineCap = "round";
       gctx.shadowColor = b.color;
-      gctx.shadowBlur = 4;
+      gctx.shadowBlur = 3;
       gctx.beginPath();
       gctx.moveTo(b.x, b.y);
-      gctx.lineTo(b.x - Math.cos(b.angle) * 12, b.y - Math.sin(b.angle) * 12);
+      gctx.lineTo(b.x - Math.cos(b.angle) * 11, b.y - Math.sin(b.angle) * 11);
       gctx.stroke();
       gctx.restore();
     }
@@ -383,11 +383,11 @@ function updateAndRender(){
       gctx.translate(a.x, a.y);
       gctx.rotate(a.angle);
       gctx.strokeStyle = a.color;
-      gctx.lineWidth = 2.5;
+      gctx.lineWidth = 2.4;
       gctx.lineJoin = "round";
       gctx.fillStyle = "rgba(16, 13, 36, 0.9)";
       gctx.shadowColor = a.color;
-      gctx.shadowBlur = 4;
+      gctx.shadowBlur = 3;
 
       gctx.beginPath();
       for(let j = 0; j < a.numVerts; j++){
@@ -454,10 +454,10 @@ function updateAndRender(){
           softFlash();
 
           const pushAngle = Math.atan2(ship.y - a.y, ship.x - a.x);
-          ship.vx += Math.cos(pushAngle) * (4 * (0.5 + 0.5 * gameSpeed));
-          ship.vy += Math.sin(pushAngle) * (4 * (0.5 + 0.5 * gameSpeed));
-          a.vx -= Math.cos(pushAngle) * 2;
-          a.vy -= Math.sin(pushAngle) * 2;
+          ship.vx += Math.cos(pushAngle) * (3 * gameSpeed);
+          ship.vy += Math.sin(pushAngle) * (3 * gameSpeed);
+          a.vx -= Math.cos(pushAngle) * 1.5;
+          a.vy -= Math.sin(pushAngle) * 1.5;
 
           confetti();
         }
@@ -478,9 +478,9 @@ function updateAndRender(){
       gctx.beginPath();
       gctx.arc(0, 0, ship.size * 1.5, 0, Math.PI * 2);
       gctx.strokeStyle = pick(PALETTE);
-      gctx.lineWidth = 2.5;
+      gctx.lineWidth = 2.2;
       gctx.shadowColor = "#7ee8fa";
-      gctx.shadowBlur = 6;
+      gctx.shadowBlur = 5;
       gctx.stroke();
     }
 
@@ -508,10 +508,10 @@ function updateAndRender(){
     gctx.fillStyle = "#1b1744";
     gctx.fill();
     gctx.strokeStyle = "#7ee8fa";
-    gctx.lineWidth = 2.8;
+    gctx.lineWidth = 2.6;
     gctx.lineJoin = "round";
     gctx.shadowColor = "#7ee8fa";
-    gctx.shadowBlur = 4;
+    gctx.shadowBlur = 3;
     gctx.stroke();
 
     // Cockpit
@@ -543,7 +543,7 @@ $("btnStart").addEventListener("click", () => {
 });
 
 $("selSpeed").addEventListener("change", e => {
-  gameSpeed = parseFloat(e.target.value) || 0.5;
+  gameSpeed = parseFloat(e.target.value) || 0.10;
   e.target.blur();
 });
 
