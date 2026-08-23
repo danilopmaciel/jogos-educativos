@@ -69,7 +69,7 @@
 <canvas id="fx"></canvas>
 <div id="flash"></div>
 <div id="hint">Aperte qualquer tecla &nbsp;•&nbsp; Espaço = fogos &nbsp;•&nbsp; Enter = estrelas &nbsp;•&nbsp; segure ESC = sair</div>
-<div id="versionBadge" style="position:fixed; top:1.4vh; left:1.4vh; z-index:8; font-size:12px; font-weight:800; opacity:0.6; color:#fff; background:rgba(255,255,255,0.12); padding:3px 10px; border-radius:999px; backdrop-filter:blur(6px); pointer-events:none;">v1.2.1</div>
+<div id="versionBadge" style="position:fixed; top:1.4vh; left:1.4vh; z-index:8; font-size:12px; font-weight:800; opacity:0.6; color:#fff; background:rgba(255,255,255,0.12); padding:3px 10px; border-radius:999px; backdrop-filter:blur(6px); pointer-events:none;">v1.3.0</div>
 <div id="tools">
   <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
   <select id="selVoice" title="Escolha a voz em português"><option>voz padrão</option></select>
@@ -80,7 +80,7 @@
   <button id="btnVoice">🔊 Voz: ligada</button>
 </div>
 <div id="start">
-  <h1>Alfabeto Mágico <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.2.1</span></h1>
+  <h1>Alfabeto Mágico <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.3.0</span></h1>
   <p>Aperte uma <b>letra</b> e ouça o <b>som</b> dela. Aperte de novo e vira uma
      <b>palavra com desenho</b>.<br>
      Aperte um <b>número</b> e depois veja as <b>mãos com os dedos</b>.<br>
@@ -98,14 +98,14 @@
 </div>
 
 <!-- ordem importa: base → fonemas → audio → particulas → maos → conteudo → jogo -->
-<script src="../../lib/base.js?v=3"></script>
-<script src="../../lib/fonemas.js?v=3"></script>
-<script src="../../lib/audio.js?v=3"></script>
-<script src="../../lib/particulas.js?v=3"></script>
-<script src="../../lib/maos.js?v=3"></script>
-<script src="../../lib/trava.js?v=3"></script>
-<script src="../../lib/controles.js?v=3"></script>
-<script src="conteudo.js?v=3"></script>
+<script src="../../lib/base.js?v=4"></script>
+<script src="../../lib/fonemas.js?v=4"></script>
+<script src="../../lib/audio.js?v=4"></script>
+<script src="../../lib/particulas.js?v=4"></script>
+<script src="../../lib/maos.js?v=4"></script>
+<script src="../../lib/trava.js?v=4"></script>
+<script src="../../lib/controles.js?v=4"></script>
+<script src="conteudo.js?v=4"></script>
 <script>
 /* ======================= ESTADO DO JOGO ======================= */
 const stage = $("stage"), artEl = $("art"), labelEl = $("label"),
