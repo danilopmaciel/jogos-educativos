@@ -55,7 +55,7 @@
 
 <div id="hud">
   <div id="score">⭐ 0 meteoros</div>
-  <div style="font-size:11px; opacity:0.6; font-weight:800; color:#fff;">v1.4.0</div>
+  <div style="font-size:11px; opacity:0.6; font-weight:800; color:#fff;">v1.5.0</div>
 </div>
 
 <div id="hint">◄ ► Gira &nbsp;•&nbsp; ▲ Impulso &nbsp;•&nbsp; Espaço/Tiro = Feixes de luz</div>
@@ -75,7 +75,7 @@
 </div>
 
 <div id="start">
-  <h1>Nave no Espaço <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.4.0</span></h1>
+  <h1>Nave no Espaço <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.5.0</span></h1>
   <p>Voe com a sua nave triângulo pelo cosmos e atire feixes de luz para transformar meteoros em estrelas! 🚀✨</p>
   <p class="controls-tip">
     🕹️ <b>Teclado ou Controle:</b> Setas (ou A/D/W) para pilotar e <b>Espaço/Enter</b> para atirar.<br>
@@ -87,13 +87,13 @@
 
 <!-- Scripts compartilhados -->
 <script>window.CONTROLES_DEFAULT_MODE = "gamepad";</script>
-<script src="../../lib/base.js?v=5"></script>
-<script src="../../lib/fonemas.js?v=5"></script>
-<script src="../../lib/audio.js?v=5"></script>
-<script src="../../lib/particulas.js?v=5"></script>
-<script src="../../lib/maos.js?v=5"></script>
-<script src="../../lib/trava.js?v=5"></script>
-<script src="../../lib/controles.js?v=5"></script>
+<script src="../../lib/base.js?v=6"></script>
+<script src="../../lib/fonemas.js?v=6"></script>
+<script src="../../lib/audio.js?v=6"></script>
+<script src="../../lib/particulas.js?v=6"></script>
+<script src="../../lib/maos.js?v=6"></script>
+<script src="../../lib/trava.js?v=6"></script>
+<script src="../../lib/controles.js?v=6"></script>
 
 <script>
 /* ============================================================================
@@ -314,10 +314,21 @@ function updateAndRender(){
       ship.vx += Math.cos(ship.angle) * currentThrust;
       ship.vy += Math.sin(ship.angle) * currentThrust;
 
-      // Partículas propulsoras suaves
-      const tailX = ship.x - Math.cos(ship.angle) * (ship.size * 0.8);
-      const tailY = ship.y - Math.sin(ship.angle) * (ship.size * 0.8);
-      sprinkle(tailX + rnd(-2, 2), tailY + rnd(-2, 2), pick(["#ff5f6d", "#ff9a44", "#ffd23f"]));
+      // Jato propulsor delicado e estritamente oposto ao movimento (para trás da nave)
+      const tailX = ship.x - Math.cos(ship.angle) * (ship.size * 0.7);
+      const tailY = ship.y - Math.sin(ship.angle) * (ship.size * 0.7);
+      const jetAngle = ship.angle + Math.PI + rnd(-0.2, 0.2);
+      const jetSpeed = rnd(2.0, 4.0);
+      P({
+        x: tailX,
+        y: tailY,
+        vx: Math.cos(jetAngle) * jetSpeed + ship.vx * 0.15,
+        vy: Math.sin(jetAngle) * jetSpeed + ship.vy * 0.15,
+        g: 0,
+        size: rnd(1.8, 3.2),
+        decay: rnd(0.045, 0.09),
+        color: pick(["#ffd23f", "#ff9a44", "#ff5f6d", "#7ee8fa"])
+      });
       if(Math.random() < 0.15) sThrust();
     }
 
@@ -484,16 +495,16 @@ function updateAndRender(){
       gctx.stroke();
     }
 
-    // Fogo da propulsão
+    // Fogo da propulsão (pequeno e elegante na traseira)
     if(ship.thrusting){
       gctx.beginPath();
-      gctx.moveTo(-ship.size * 0.7, -ship.size * 0.35);
-      gctx.lineTo(-ship.size * (1.2 + Math.random() * 0.4), 0);
-      gctx.lineTo(-ship.size * 0.7, ship.size * 0.35);
+      gctx.moveTo(-ship.size * 0.45, -ship.size * 0.2);
+      gctx.lineTo(-ship.size * (0.8 + Math.random() * 0.35), 0);
+      gctx.lineTo(-ship.size * 0.45, ship.size * 0.2);
       gctx.closePath();
-      gctx.fillStyle = pick(["#ff5f6d", "#ffd23f", "#ff9a44"]);
-      gctx.shadowColor = "#ff5f6d";
-      gctx.shadowBlur = 4;
+      gctx.fillStyle = pick(["#ffd23f", "#ff9a44", "#ff5f6d"]);
+      gctx.shadowColor = "#ff9a44";
+      gctx.shadowBlur = 3;
       gctx.fill();
     }
 
