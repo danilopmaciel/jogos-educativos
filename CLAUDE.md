@@ -53,9 +53,10 @@ Estas escolhas vieram de discussão com o usuário e têm razão de ser:
    existem sem vogal. Em vez de fingir, `SOM` usa duas sílabas com vogais
    diferentes ("ba, bo"): o invariante entre as duas é a consoante.
 
-3. **Nada de "M de Maçã".** Isso ensina associação, não leitura. No lugar entra
-   aliteração: repetir o ataque e depois a palavra ("ma, ma, maçã"), com a
-   letra inicial destacada em amarelo na tela.
+3. **Nada de "M de Maçã".** Isso ensina associação, não leitura. No lugar
+   entra síntese (*blending*): o ataque UMA vez e a palavra emendada
+   ("ma, maçã"), com a letra inicial destacada em amarelo na tela. É o
+   movimento que a leitura exige — da parte para o todo.
 
 4. **Coerência fonema–grafema.** As duas palavras de uma mesma letra têm sempre
    o mesmo som inicial. Por isso G é GATO/GALINHA, não GIRAFA (que soa /ʒ/).
@@ -68,9 +69,25 @@ Estas escolhas vieram de discussão com o usuário e têm razão de ser:
    que o O passou a soar como U. "ó" e "é" são tônicos por definição e não têm
    para onde reduzir. Nunca escreva um `fala` ou `ONSET` de vogal sem acento.
 
-6. **Não repita a mesma sílaba duas vezes.** O par das oclusivas ("ba, bo")
-   existe para VARIAR a vogal: o invariante entre as duas é a consoante, e é
-   isso que a criança tem que isolar. "ôh, ôh" não isola nada.
+6. **Cada som, uma vez só.** Vale para a tabela `SOM`, para o `ONSET` e para
+   qualquer fala nova. Repetição não ensina — cansa e empurra a palavra, que é
+   o alvo, para o fim. Nada de "ááá", nada de "ma, ma, maçã", nada de dizer a
+   palavra duas vezes. Cada letra fala a MENOR UNIDADE HONESTA do seu fonema:
+
+   | tipo | fala | por quê |
+   |---|---|---|
+   | vogal | `"á"` | uma vogal acentuada já é o fonema inteiro |
+   | contínua F M N S V Z | `"mmmm"` | som sustentado é UM fonema, não repetição — dá para segurar /m/ sem nunca virar sílaba |
+   | oclusiva B D P T C G K Q | `"ba, bo"` | /b/ não existe sem vogal; o par varia a VOGAL para o que sobra igual ser a consoante |
+   | L, R | `"la, lo"` | são contínuas, mas "llll"/"rrrr" a voz soletra em vez de sustentar |
+
+   As duas sílabas das oclusivas não são exceção à regra: são a menor unidade
+   possível, e são DIFERENTES entre si de propósito. Duas sílabas iguais
+   ("ôh, ôh") não isolam nada — isso é repetição, e é proibido.
+
+   **A única exceção é a contagem** (decisão 8): ali o número volta no fim
+   ("um, dois, três… três dedos") porque é exatamente assim que se ensina
+   cardinalidade. Não "conserte" isso.
 
 7. **Maiúscula e minúscula juntas** na tela: são a mesma letra.
 
@@ -85,7 +102,9 @@ instalada no sistema. O que ajuda e já está feito:
 - Ranking prioriza vozes de rede (`!localService`), que são neurais; as locais
   antigas (SAPI5, eSpeak) soam metálicas.
 - Fala em frases curtas, não tokens soltos — sílaba isolada é onde esses
-  sintetizadores soam pior.
+  sintetizadores soam pior. Por isso ataque e palavra vão na MESMA utterance,
+  separados por vírgula (`"ma, maçã"`): a vírgula dá a pausa curta da síntese
+  sem cortar a frase em duas e deixar a sílaba sozinha.
 - Uma utterance por trecho, para gerar pausa de respiração real.
 - Micro-variação de tom e ritmo, para a repetição não sair idêntica.
 - `LETTER_NAME` usa "êh" e "ôh" com **h mudo**: força leitura fonética e evita

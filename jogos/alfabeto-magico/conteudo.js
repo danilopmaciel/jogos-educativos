@@ -35,7 +35,7 @@ const ONSET = {
   JANELA:"ja", JACARÉ:"ja", KIWI:"qui", KOALA:"co", LUA:"lu", "LEÃO":"le",
   "MAÇÃ":"ma", MONTANHA:"mon", NUVEM:"nu", NAVIO:"na", OLHO:"ó", OVO:"ó",
   PATO:"pa", PEIXE:"pei", QUEIJO:"quei", QUADRADO:"qua", RATO:"ra", ROSA:"ro",
-  SOL:"so", SAPO:"sa", TARTARUGA:"tar", TREM:"tre", UVA:"ú", URSO:"ur",
+  SOL:"so", SAPO:"sa", TARTARUGA:"tar", TREM:"tre", UVA:"u", URSO:"ur",
   VACA:"va", "VIOLÃO":"vi", WAFFLE:"uá", "WI-FI":"uái", "XÍCARA":"xi", XADREZ:"xa",
   YOGA:"io", YETI:"ié", ZEBRA:"ze", ZERO:"ze"
 };

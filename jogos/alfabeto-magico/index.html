@@ -137,7 +137,13 @@ function showLetter(L){
     s.mode = 1;
   } else {
     /* 2º toque — palavra com desenho.
-       ALITERAÇÃO: repete o ataque e só então diz a palavra ("ma, ma, maçã").
+       SÍNTESE (blending): diz o ataque UMA vez e emenda a palavra inteira
+       ("ma, maçã"). É o movimento que a leitura exige — da parte para o todo.
+       Uma vez basta: repetir o ataque não acrescenta informação nenhuma, só
+       enche o ouvido e atrasa a palavra, que é o alvo.
+       Ataque e palavra vão na MESMA utterance, separados por vírgula: sílaba
+       solta é onde o sintetizador soa pior, e a vírgula dá a pausa curta sem
+       cortar a frase em duas.
        A letra inicial acende na tela para o olho ligar o som que ouviu à
        letra que vê. Isto substitui a fórmula "M de Maçã". */
     const list = WORDS[L] || [L];
@@ -148,8 +154,8 @@ function showLetter(L){
     const on = ONSET[word];
     show(svg, `<span class="on">${word[0]}</span>${word.slice(1)}`,
          modoSom ? "começa com " + som.ipa : L + " de " + word, color);
-    if(modoSom && on) speakSeq([on + ", " + on + ", " + say(word)], {rate:.88});
-    else              speakSeq([say(word), LETTER_NAME[L] + " de " + say(word)], {rate:.92});
+    if(modoSom && on) speakSeq([on + ", " + say(word)], {rate:.88});
+    else              speakSeq([LETTER_NAME[L] + " de " + say(word)], {rate:.92});
     s.mode = 0;
   }
   sPop(); sprinkle(innerWidth/2, innerHeight*.62, color);
@@ -256,8 +262,8 @@ $("btnVoice").addEventListener("click", () => {
   if(!voiceOn && window.speechSynthesis) speechSynthesis.cancel();
 });
 function testVoice(){
-  if(modoSom) speakSeq(["mmmm", "ma, ma, maçã"], {rate:.88});
-  else        speakSeq(["a letra ême", "Maçã. Ême de Maçã."], {rate:.95});
+  if(modoSom) speakSeq(["mmmm", "ma, maçã"], {rate:.88});
+  else        speakSeq(["a letra ême", "ême de maçã"], {rate:.95});
 }
 $("btnModo").addEventListener("click", () => {
   modoSom = !modoSom;
