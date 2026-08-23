@@ -32,16 +32,20 @@
   body.travado #tools { opacity:0; pointer-events:none; }
 
   /* Tela de início */
-  #start { position:fixed; inset:0; z-index:9; display:flex; align-items:center; justify-content:center;
-           flex-direction:column; gap:2.6vh; background:rgba(7,5,24,.95); color:#fff; text-align:center; padding:6vw; }
+  #start { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:flex-start;
+           flex-direction:column; gap:2.2vh; background:rgba(7,5,24,.96); color:#fff; text-align:center;
+           padding:5vh 6vw 8vh; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
   #start h1 { font-size:min(8.5vh,10.5vw); font-weight:900; line-height:1.1;
               background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
               -webkit-background-clip:text; background-clip:text; color:transparent; }
-  #start p { font-size:min(3vh,4.4vw); opacity:.85; max-width:28em; line-height:1.5; }
-  #start .controls-tip { font-size:min(2.2vh,3.4vw); opacity:.6; border-top:1px solid rgba(255,255,255,.15); padding-top:1.8vh; }
+  #start p { font-size:min(2.8vh,4.2vw); opacity:.85; max-width:28em; line-height:1.5; }
+  #start .controls-tip { font-size:min(2vh,3.2vw); opacity:.6; border-top:1px solid rgba(255,255,255,.15); padding-top:1.5vh; }
   #start button { font:inherit; font-size:min(3.4vh,5vw); font-weight:800; padding:.7em 1.7em; border:0; cursor:pointer;
                   border-radius:999px; background:linear-gradient(90deg,#ff9a44,#ff5f6d); color:#fff; box-shadow:0 8px 0 #00000055; }
   #start button:active { transform:translateY(4px); box-shadow:0 4px 0 #00000055; }
+  #hint { position:fixed; bottom:245px; left:0; right:0; z-index:5; text-align:center;
+          color:rgba(255,255,255,.45); font-size:min(2vh,3.2vw); font-weight:700; pointer-events:none; transition:bottom .25s ease, opacity .6s; }
+  body.vc-collapsed #hint { bottom:44px; }
 </style>
 </head>
 <body>
@@ -52,7 +56,7 @@
 
 <div id="hud">
   <div id="score">⭐ 0 meteoros</div>
-  <div style="font-size:11px; opacity:0.6; font-weight:800; color:#fff;">v1.2.0</div>
+  <div style="font-size:11px; opacity:0.6; font-weight:800; color:#fff;">v1.2.1</div>
 </div>
 
 <div id="hint">◄ ► Gira &nbsp;•&nbsp; ▲ Impulso &nbsp;•&nbsp; Espaço/Tiro = Feixes de luz</div>
@@ -65,7 +69,7 @@
 </div>
 
 <div id="start">
-  <h1>Nave no Espaço <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.2.0</span></h1>
+  <h1>Nave no Espaço <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.2.1</span></h1>
   <p>Voe com a sua nave triângulo pelo cosmos e atire feixes de luz para transformar meteoros em estrelas! 🚀✨</p>
   <p class="controls-tip">
     🕹️ <b>Teclado ou Controle:</b> Setas (ou A/D/W) para pilotar e <b>Espaço/Enter</b> para atirar.<br>
@@ -76,13 +80,13 @@
 
 <!-- Scripts compartilhados -->
 <script>window.CONTROLES_DEFAULT_MODE = "gamepad";</script>
-<script src="../../lib/base.js?v=2"></script>
-<script src="../../lib/fonemas.js?v=2"></script>
-<script src="../../lib/audio.js?v=2"></script>
-<script src="../../lib/particulas.js?v=2"></script>
-<script src="../../lib/maos.js?v=2"></script>
-<script src="../../lib/trava.js?v=2"></script>
-<script src="../../lib/controles.js?v=2"></script>
+<script src="../../lib/base.js?v=3"></script>
+<script src="../../lib/fonemas.js?v=3"></script>
+<script src="../../lib/audio.js?v=3"></script>
+<script src="../../lib/particulas.js?v=3"></script>
+<script src="../../lib/maos.js?v=3"></script>
+<script src="../../lib/trava.js?v=3"></script>
+<script src="../../lib/controles.js?v=3"></script>
 
 <script>
 /* ============================================================================
