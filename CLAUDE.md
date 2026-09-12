@@ -29,6 +29,8 @@ lib/            biblioteca compartilhada — carregue nesta ordem:
   trava.js        trava de criança: travar/destravar/travaToggle, travaOn
   controles.js    teclado virtual e gamepad touch para celular/tablet
 jogos/
+  painel-sensorial/
+    index.html      painel sensorial Montessori estilo Pok Pok para 2 e 3 anos
   alfabeto-magico/
     index.html      HTML, CSS e lógica do jogo
     conteudo.js     WORDS, ONSET e os 54 desenhos (ART)
