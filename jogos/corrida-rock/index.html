@@ -168,12 +168,12 @@
 
 <!-- Modal de Início -->
 <div id="start">
-  <h1>Corrida Rock <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.7.0</span></h1>
+  <h1>Corrida Rock <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.7.1</span></h1>
   <p>Pise fundo na clássica pista quadrada com o poder do Rock n' Roll! 🏎️🎸</p>
   
   <div class="tip-box">
     <b>💡 Dica Especial para os Pequenos Pilotos:</b><br>
-    Quando você aperta para virar, uma <b>seta brilhante</b> surge no lado do carrinho mostrando o <b>vetor de força</b>! Mesmo quando o carro estiver descendo de frente, a seta mostra exatamente para onde a força está empurrando o carro.
+    Quando você aperta para virar, uma <b>flecha brilhante com ponta e penas</b> surge no lado do carrinho mostrando o <b>vetor de força</b>! Mesmo quando o carro estiver descendo de frente, a flecha mostra exatamente para onde a força está empurrando o carro.
   </div>
 
   <p style="font-size:min(2vh,3.2vw); opacity:0.75;">
@@ -184,10 +184,10 @@
 </div>
 
 <!-- Scripts compartilhados -->
-<script src="../../lib/base.js?v=7"></script>
-<script src="../../lib/audio.js?v=7"></script>
-<script src="../../lib/particulas.js?v=7"></script>
-<script src="../../lib/trava.js?v=7"></script>
+<script src="../../lib/base.js?v=9"></script>
+<script src="../../lib/audio.js?v=9"></script>
+<script src="../../lib/particulas.js?v=9"></script>
+<script src="../../lib/trava.js?v=9"></script>
 
 <script>
 /* ============================================================================
@@ -502,45 +502,88 @@ function drawCar(){
   gctx.restore();
 }
 
-/* O VETOR FORÇA LATERAL — Visualiza com extrema clareza a direção relativa */
+/* O VETOR FORÇA LATERAL — Desenhado como uma Flecha estilizada com ponta e penas */
+let vectorAnimFrame = 0;
+
 function drawForceVector(){
   const isLeft = car.vectorLeftActive;
-  const sideY = isLeft ? -car.width * 0.55 : car.width * 0.55;
-  const arrowDir = isLeft ? -1 : 1;
-  const arrowLength = 48;
+  const sideY = isLeft ? -car.width * 0.52 : car.width * 0.52;
+  const dir = isLeft ? -1 : 1;
+  const arrowLength = 54;
   const arrowColor = isLeft ? "#7ee8fa" : "#ffd23f";
+  const glowColor = isLeft ? "#48cae4" : "#ff9a44";
+
+  vectorAnimFrame++;
 
   gctx.save();
+  gctx.translate(0, sideY);
+
   gctx.strokeStyle = arrowColor;
   gctx.fillStyle = arrowColor;
-  gctx.lineWidth = 4;
-  gctx.lineCap = "round";
-  gctx.shadowColor = arrowColor;
-  gctx.shadowBlur = 10;
+  gctx.shadowColor = glowColor;
+  gctx.shadowBlur = 12;
 
-  // Linha do vetor partindo da lateral do carrinho
+  // 1. Haste da Flecha
+  gctx.lineWidth = 4.5;
+  gctx.lineCap = "round";
   gctx.beginPath();
-  gctx.moveTo(0, sideY);
-  gctx.lineTo(0, sideY + arrowDir * arrowLength);
+  gctx.moveTo(0, 0);
+  gctx.lineTo(0, dir * arrowLength);
   gctx.stroke();
 
-  // Cabeça da seta
-  const headY = sideY + arrowDir * arrowLength;
+  // 2. Ponta Afiada da Flecha (Arrowhead com barbelas)
+  const tipY = dir * (arrowLength + 16);
+  const barbY = dir * arrowLength;
+  const barbX = 12;
   gctx.beginPath();
-  gctx.moveTo(0, headY + arrowDir * 6);
-  gctx.lineTo(-9, headY);
-  gctx.lineTo(9, headY);
+  gctx.moveTo(0, tipY);
+  gctx.lineTo(-barbX, barbY);
+  gctx.lineTo(-barbX * 0.4, barbY + dir * 2);
+  gctx.lineTo(0, barbY - dir * 2);
+  gctx.lineTo(barbX * 0.4, barbY + dir * 2);
+  gctx.lineTo(barbX, barbY);
   gctx.closePath();
   gctx.fill();
 
-  // Rótulo textual ao lado da seta (ESQUERDA / DIREITA)
+  // 3. Penas de Flecha na base (Fletching clássico de arco e flecha)
+  gctx.lineWidth = 2.5;
+  const fletch1 = dir * 6;
+  const fletch2 = dir * 15;
+  const fletch3 = dir * 23;
+  const fletchW = 8;
+  gctx.beginPath();
+  // Primeiro par de penas
+  gctx.moveTo(0, fletch1);
+  gctx.lineTo(-fletchW, fletch2);
+  gctx.moveTo(0, fletch1);
+  gctx.lineTo(fletchW, fletch2);
+  // Segundo par de penas
+  gctx.moveTo(0, fletch2);
+  gctx.lineTo(-fletchW, fletch3);
+  gctx.moveTo(0, fletch2);
+  gctx.lineTo(fletchW, fletch3);
+  gctx.stroke();
+
+  // 4. Chevrons dinâmicos pulsando na haste (efeito de vetor força)
+  const pulseOffset = (vectorAnimFrame % 20) / 20;
+  const chevY = dir * (16 + pulseOffset * 26);
+  gctx.lineWidth = 3;
+  gctx.beginPath();
+  gctx.moveTo(-5, chevY - dir * 4);
+  gctx.lineTo(0, chevY);
+  gctx.lineTo(5, chevY - dir * 4);
+  gctx.stroke();
+
+  // 5. Rótulo de Direção (ESQUERDA ◀ / DIREITA ▶)
   gctx.save();
-  gctx.translate(0, headY + arrowDir * 16);
+  gctx.translate(0, tipY + dir * 18);
   gctx.rotate(isLeft ? Math.PI / 2 : -Math.PI / 2);
-  gctx.font = '900 12px "Baloo 2", sans-serif';
+  gctx.fillStyle = "#ffffff";
+  gctx.font = '900 13px "Baloo 2", sans-serif';
   gctx.textAlign = "center";
   gctx.textBaseline = "middle";
-  gctx.shadowBlur = 4;
+  gctx.shadowColor = glowColor;
+  gctx.shadowBlur = 6;
   gctx.fillText(isLeft ? "◄ ESQUERDA" : "DIREITA ►", 0, 0);
   gctx.restore();
 
@@ -581,6 +624,79 @@ function activateTurbo(){
     // Confete suave no impulso
     sprinkle(car.x, car.y, "#ffd23f");
   }
+}
+
+/* Calcula o ponto mais próximo na faixa central da pista e o ângulo tangente horário */
+function getTrackCenterPoint(px, py, t){
+  const midX = t.x + t.roadWidth / 2;
+  const midY = t.y + t.roadWidth / 2;
+  const midW = t.w - t.roadWidth;
+  const midH = t.h - t.roadWidth;
+  const midR = Math.max(12, t.radius - t.roadWidth / 2);
+
+  const left = midX + midR;
+  const right = midX + midW - midR;
+  const top = midY + midR;
+  const bottom = midY + midH - midR;
+
+  let cx = px;
+  let cy = py;
+  let forwardAngle = 0;
+
+  // 1. Quatro cantos arredondados
+  if(px < left && py < top){
+    // Canto Superior Esquerdo
+    const ang = Math.atan2(py - top, px - left);
+    cx = left + midR * Math.cos(ang);
+    cy = top + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2; // curva horária
+  } else if(px > right && py < top){
+    // Canto Superior Direito
+    const ang = Math.atan2(py - top, px - right);
+    cx = right + midR * Math.cos(ang);
+    cy = top + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2; // curva horária
+  } else if(px > right && py > bottom){
+    // Canto Inferior Direito
+    const ang = Math.atan2(py - bottom, px - right);
+    cx = right + midR * Math.cos(ang);
+    cy = bottom + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2; // curva horária
+  } else if(px < left && py > bottom){
+    // Canto Inferior Esquerdo
+    const ang = Math.atan2(py - bottom, px - left);
+    cx = left + midR * Math.cos(ang);
+    cy = bottom + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2; // curva horária
+  } else {
+    // 2. Quatro retas
+    const dTop = Math.abs(py - midY);
+    const dBottom = Math.abs(py - (midY + midH));
+    const dLeft = Math.abs(px - midX);
+    const dRight = Math.abs(px - (midX + midW));
+    const minD = Math.min(dTop, dBottom, dLeft, dRight);
+
+    if(minD === dTop){
+      cx = Math.max(left, Math.min(right, px));
+      cy = midY;
+      forwardAngle = 0; // Indo para a direita
+    } else if(minD === dRight){
+      cx = midX + midW;
+      cy = Math.max(top, Math.min(bottom, py));
+      forwardAngle = Math.PI / 2; // Indo para baixo
+    } else if(minD === dBottom){
+      cx = Math.max(left, Math.min(right, px));
+      cy = midY + midH;
+      forwardAngle = Math.PI; // Indo para a esquerda
+    } else {
+      cx = midX;
+      cy = Math.max(top, Math.min(bottom, py));
+      forwardAngle = -Math.PI / 2; // Indo para cima
+    }
+  }
+
+  const dist = Math.hypot(px - cx, py - cy);
+  return { cx, cy, dist, forwardAngle };
 }
 
 function updatePhysics(){
@@ -637,33 +753,43 @@ function updatePhysics(){
     }
   }
 
-  // 5. Colisão Suave com Barreiras / Zebras (Ricochete sem frustração!)
+  // 5. Colisão Suave e Anti-Travamento (mantém o carro 100% no asfalto da pista)
   if(car.bounceTimer > 0) car.bounceTimer--;
 
-  const outOfBoundsOuter = (
-    car.x < t.x + car.width/2 ||
-    car.x > t.x + t.w - car.width/2 ||
-    car.y < t.y + car.width/2 ||
-    car.y > t.y + t.h - car.width/2
-  );
+  const trackInfo = getTrackCenterPoint(car.x, car.y, t);
+  const maxAllowDist = (t.roadWidth * 0.5) - (car.width * 0.38);
 
-  const inInnerIsland = (
-    car.x > t.innerX - car.width/3 &&
-    car.x < t.innerX + t.innerW + car.width/3 &&
-    car.y > t.innerY - car.width/3 &&
-    car.y < t.innerY + t.innerH + car.width/3
-  );
+  if(trackInfo.dist > maxAllowDist){
+    // Tocou na zebra ou tentou sair da pista (externa ou ilha interna)
+    // 1. Limita o carro rigorosamente ao asfalto, empurrando-o de volta
+    const pushFactor = maxAllowDist / trackInfo.dist;
+    car.x = trackInfo.cx + (car.x - trackInfo.cx) * pushFactor;
+    car.y = trackInfo.cy + (car.y - trackInfo.cy) * pushFactor;
 
-  if((outOfBoundsOuter || inInnerIsland) && car.bounceTimer === 0){
-    car.bounceTimer = 16;
-    sBounce();
-    // Ajusta o ângulo suavemente em direção ao centro da pista
-    const trackCenterX = t.x + t.w / 2;
-    const trackCenterY = t.y + t.h / 2;
-    const toCenterAngle = Math.atan2(trackCenterY - car.y, trackCenterX - car.x);
-    car.angle = toCenterAngle + rnd(-0.2, 0.2);
-    car.speed *= 0.75; // leve desaceleração macia
-    sprinkle(car.x, car.y, "#ffffff");
+    // 2. Efeito sonoro e partículas de borracha na zebra
+    if(car.bounceTimer === 0){
+      car.bounceTimer = 10;
+      sBounce();
+      sprinkle(car.x, car.y, "#ffffff");
+    }
+
+    // 3. Reorienta suavemente para a direção correta da pista (tangente horária)
+    let diffAngle = trackInfo.forwardAngle - car.angle;
+    while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+    while(diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+    car.angle += diffAngle * 0.45;
+
+    car.speed *= 0.82;
+  }
+
+  // 4. Salva-vidas instantâneo: se por qualquer motivo o carro for jogado longe da pista,
+  // reposiciona imediatamente no asfalto com a proa correta!
+  if(trackInfo.dist > t.roadWidth * 0.85){
+    car.x = trackInfo.cx;
+    car.y = trackInfo.cy;
+    car.angle = trackInfo.forwardAngle;
+    car.speed = car.baseSpeed * gameSpeed * 0.6;
+    sprinkle(car.x, car.y, "#ffd23f");
   }
 
   // 6. Verificação de Checkpoints e Voltas
