@@ -51,6 +51,14 @@ Inspirado na pedagogia Montessori e no aplicativo **Pok Pok Playroom**, desenhad
 - **Disco de Formas e Cores:** Gira entre Círculo, Quadrado, Triângulo e Estrela com pronúncia em português.
 - **Sem regras ou estresse:** Brincadeira aberta focada em causa-e-efeito, tato e audição, funcionando perfeitamente tanto no toque na tela quanto com teclas do computador.
 
+### 4. 🏎️ Corrida Rock (Pista Quadrada & Vetor Força)
+Inspirado no clássico *Rock n' Roll Racing*, adaptado pedagogicamente para ajudar crianças a dominarem orientação espacial e referencial relativo:
+
+- **Pista Quadrada Clássica:** Circuito com zebras, linha de chegada quadriculada e pórtico de largada.
+- **Vetor Força Lateral:** Ao apertar para virar à esquerda ou direita, uma **seta brilhante** surge na lateral do carrinho, indicando com clareza o vetor de força atuando no chassi — essencial para a criança não se perder quando o carro estiver descendo de frente!
+- **Botão de TURBO! 🚀:** Fogo saindo pelos escapamentos, aceleração máxima e ronco de motor com rastro de velocidade.
+- **Trilha Rock n' Roll 16-bit:** Riffs de baixo, bumbo, caixa e solo de guitarra sintetizados 100% via Web Audio API.
+
 ---
 
 ## 📱 Controles Mobile na Tela
@@ -83,6 +91,7 @@ lib/                        Código compartilhado
   trava.js                  Trava de teclado para crianças (tela cheia + ESC)
   controles.js              Teclado virtual e D-Pad touch para smartphones
 jogos/
+  corrida-rock/             Jogo de corrida estilo Rock n' Roll com vetor força
   painel-sensorial/         Mini-game sensorial estilo Pok Pok para 2 e 3 anos
   alfabeto-magico/          Mini-game do alfabeto fônico e números
   meteoros/                 Mini-game espacial com nave e meteoros

@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Corrida Rock — Jogos para Aprender</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body {
+    height:100%; overflow:hidden; background:#120e24;
+    font-family:"Baloo 2","Comic Sans MS","Trebuchet MS",system-ui,sans-serif;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+    touch-action:none; overscroll-behavior:none;
+  }
+  #bg {
+    position:fixed; inset:0; z-index:0;
+    background:radial-gradient(circle at 50% 50%, #201742 0%, #0d091a 70%);
+    transition:background 700ms ease;
+  }
+  #gameCanvas { position:fixed; inset:0; z-index:1; }
+  #fx { position:fixed; inset:0; z-index:3; pointer-events:none; }
+  #flash { position:fixed; inset:0; z-index:4; pointer-events:none; opacity:0; mix-blend-mode:screen; }
+
+  /* HUD Superior */
+  #hud {
+    position:fixed; top:1.8vh; left:2.5vw; z-index:5;
+    display:flex; flex-direction:column; gap:.4vh; pointer-events:none;
+  }
+  #lapInfo {
+    font-size:min(3.8vh, 5.2vw); font-weight:900; color:#ffd23f;
+    text-shadow:0 3px 0 rgba(0,0,0,.6), 0 0 15px rgba(255,210,63,.4);
+  }
+  #speedGauge {
+    font-size:min(2.2vh, 3.2vw); font-weight:800; color:#7ee8fa;
+    text-shadow:0 2px 0 rgba(0,0,0,.6);
+  }
+
+  /* Barra de Turbo no HUD */
+  #turboMeterWrapper {
+    width:clamp(120px, 18vw, 200px); height:clamp(12px, 2vh, 18px);
+    background:rgba(0,0,0,0.5); border:2px solid rgba(255,255,255,0.4);
+    border-radius:999px; overflow:hidden; margin-top:4px;
+  }
+  #turboMeterFill {
+    width:100%; height:100%;
+    background:linear-gradient(90deg, #ff9a44, #ff5f6d, #ffd23f);
+    transition:width 0.1s linear;
+  }
+
+  /* Ferramentas Superiores */
+  #tools { position:fixed; top:1.4vh; right:1.4vh; z-index:6; display:flex; gap:.8vh; opacity:.35; transition:opacity .3s; }
+  #tools:hover { opacity:1; }
+  #tools button, #tools select, #tools a {
+    font:inherit; font-weight:800; font-size:1.8vh; padding:.4em .9em; border:0;
+    border-radius:999px; background:rgba(255,255,255,.18); color:#fff; cursor:pointer;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); text-decoration:none;
+  }
+  #tools select option { background:#161230; color:#fff; }
+  body.travado #tools { opacity:0; pointer-events:none; }
+
+  /* Controles Virtuais na Tela para Celular/Tablet */
+  #touchControls {
+    position:fixed; bottom:0; left:0; right:0; z-index:10;
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding:16px 24px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    pointer-events:none;
+  }
+  .touch-group {
+    display:flex; gap:16px; pointer-events:auto;
+  }
+  .touch-btn {
+    width:clamp(70px, 16vw, 95px); height:clamp(70px, 16vw, 95px);
+    border-radius:50%; border:3px solid rgba(255,255,255,0.3);
+    background:rgba(20, 16, 45, 0.75); backdrop-filter:blur(8px);
+    color:#fff; font-size:clamp(26px, 6vw, 38px); font-weight:900;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 6px 16px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.2);
+    touch-action:manipulation; cursor:pointer; transition:transform .1s, background .1s;
+  }
+  .touch-btn:active, .touch-btn.active {
+    transform:scale(0.92) translateY(4px);
+    background:rgba(255, 210, 63, 0.85); color:#120e24;
+    box-shadow:0 2px 6px rgba(0,0,0,0.5);
+  }
+  .touch-btn-turbo {
+    background:linear-gradient(135deg, #ff5f6d, #ff9a44);
+    border-color:#ffd23f; font-size:clamp(16px, 3.8vw, 24px);
+  }
+  .touch-btn-turbo:active, .touch-btn-turbo.active {
+    background:linear-gradient(135deg, #ff9a44, #ffd23f);
+    transform:scale(0.92) translateY(4px);
+  }
+  .btn-label { font-size:clamp(10px, 2.2vw, 13px); font-weight:800; margin-top:-2px; }
+
+  /* Modal de Início */
+  #start {
+    position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:flex-start;
+    flex-direction:column; gap:2.2vh; background:rgba(14,10,32,.97); color:#fff; text-align:center;
+    padding:5vh 6vw 8vh; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y;
+  }
+  #start h1 {
+    font-size:min(8.5vh,10.5vw); font-weight:900; line-height:1.1;
+    background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #start p { font-size:min(2.8vh,4.2vw); opacity:.85; max-width:28em; line-height:1.5; }
+  #start .tip-box {
+    background:rgba(255,255,255,0.08); border:2px solid rgba(255,210,63,0.3);
+    border-radius:18px; padding:12px 18px; max-width:28em;
+    font-size:min(2.1vh,3.2vw); text-align:left; line-height:1.45;
+  }
+  #start button {
+    font:inherit; font-size:min(3.4vh,5vw); font-weight:800; padding:.7em 1.8em; border:0; cursor:pointer;
+    border-radius:999px; background:linear-gradient(90deg,#ff9a44,#ff5f6d); color:#fff;
+    box-shadow:0 8px 0 #00000055, 0 10px 20px rgba(255,95,109,0.4);
+  }
+  #start button:active { transform:translateY(4px); box-shadow:0 4px 0 #00000055; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<canvas id="gameCanvas"></canvas>
+<canvas id="fx"></canvas>
+<div id="flash"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="lapInfo">🏁 Volta 1 / 3</div>
+  <div id="speedGauge">Velocidade: 0 km/h</div>
+  <div id="turboMeterWrapper" title="Carga do Turbo">
+    <div id="turboMeterFill"></div>
+  </div>
+</div>
+
+<!-- Ferramentas -->
+<div id="tools">
+  <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
+  <select id="selSpeed" title="Velocidade da corrida">
+    <option value="0.30">🐢 30% (Super Calmo)</option>
+    <option value="0.55" selected>🚀 55% (Padrão Infantil)</option>
+    <option value="0.80">⚡ 80% (Rápido)</option>
+    <option value="1.00">🏎️ 100% (Rock n' Roll)</option>
+  </select>
+  <button id="btnFull" title="Tela cheia">⛶ Tela cheia</button>
+  <button id="btnTrava" title="Bloqueia teclas do sistema">🔓 Travar teclado</button>
+  <button id="btnSound" title="Ligar/Desligar som e música">🔊 Som: ligado</button>
+</div>
+
+<!-- Controles Touch na Tela -->
+<div id="touchControls">
+  <div class="touch-group">
+    <button class="touch-btn" id="btnLeft" title="Virar à esquerda">
+      <span>◀</span>
+      <span class="btn-label">ESQ</span>
+    </button>
+    <button class="touch-btn" id="btnRight" title="Virar à direita">
+      <span>▶</span>
+      <span class="btn-label">DIR</span>
+    </button>
+  </div>
+  <div class="touch-group">
+    <button class="touch-btn touch-btn-turbo" id="btnTurbo" title="Ativar Turbo">
+      <span>🚀</span>
+      <span class="btn-label">TURBO</span>
+    </button>
+  </div>
+</div>
+
+<!-- Modal de Início -->
+<div id="start">
+  <h1>Corrida Rock <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.7.0</span></h1>
+  <p>Pise fundo na clássica pista quadrada com o poder do Rock n' Roll! 🏎️🎸</p>
+  
+  <div class="tip-box">
+    <b>💡 Dica Especial para os Pequenos Pilotos:</b><br>
+    Quando você aperta para virar, uma <b>seta brilhante</b> surge no lado do carrinho mostrando o <b>vetor de força</b>! Mesmo quando o carro estiver descendo de frente, a seta mostra exatamente para onde a força está empurrando o carro.
+  </div>
+
+  <p style="font-size:min(2vh,3.2vw); opacity:0.75;">
+    🕹️ <b>Teclado:</b> Setas ◄ e ► (ou A e D) para virar &nbsp;•&nbsp; <b>Espaço</b> ou ▲ para TURBO!<br>
+    📱 <b>No celular:</b> Use os botões ◀, ▶ e 🚀 TURBO na parte inferior.
+  </p>
+  <button id="btnStart">Ligar os Motores!</button>
+</div>
+
+<!-- Scripts compartilhados -->
+<script src="../../lib/base.js?v=7"></script>
+<script src="../../lib/audio.js?v=7"></script>
+<script src="../../lib/particulas.js?v=7"></script>
+<script src="../../lib/trava.js?v=7"></script>
+
+<script>
+/* ============================================================================
+   CORRIDA ROCK — PISTA QUADRADA COM VETOR FORÇA LATERAL
+   ========================================================================== */
+const gcv = $("gameCanvas"), gctx = gcv.getContext("2d");
+let started = false;
+let soundOn = true;
+let gameSpeed = 0.55; // Padrão infantil calmo
+
+/* Configuração do tamanho do Canvas */
+function resizeGame(){
+  gcv.width = innerWidth * devicePixelRatio;
+  gcv.height = innerHeight * devicePixelRatio;
+  gcv.style.width = innerWidth + "px";
+  gcv.style.height = innerHeight + "px";
+  gctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+}
+addEventListener("resize", resizeGame);
+resizeGame();
+
+/* ============================================================================
+   ÁUDIO RETRÔ ROCK N' ROLL (SINTETIZADOR WEB AUDIO API)
+   ========================================================================== */
+let musicBeat = 0;
+let musicTimer = null;
+const rockBassNotes = [110, 110, 130.8, 146.8, 110, 164.8, 146.8, 130.8]; // Riff A minor
+
+function playRockBeat(){
+  if(!soundOn || !started) return;
+  try {
+    const c = ac();
+    const freq = rockBassNotes[musicBeat % rockBassNotes.length];
+    
+    // Baixo Rock n' Roll com distorção quente
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(freq, c.currentTime);
+    gain.gain.setValueAtTime(0.04, c.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.22);
+    osc.connect(gain); gain.connect(c.destination);
+    osc.start(); osc.stop(c.currentTime + 0.24);
+
+    // Bumbo & Caixa (Kick & Snare)
+    if(musicBeat % 2 === 0){
+      // Kick bumbo
+      const kick = c.createOscillator();
+      const kGain = c.createGain();
+      kick.type = "sine";
+      kick.frequency.setValueAtTime(140, c.currentTime);
+      kick.frequency.exponentialRampToValueAtTime(40, c.currentTime + 0.12);
+      kGain.gain.setValueAtTime(0.12, c.currentTime);
+      kGain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.14);
+      kick.connect(kGain); kGain.connect(c.destination);
+      kick.start(); kick.stop(c.currentTime + 0.15);
+    } else {
+      // Snare caixa
+      tone(220, 0.08, "triangle", 0.05, 90);
+    }
+
+    musicBeat++;
+  } catch(e){}
+}
+
+function sTireScreech(){
+  if(!soundOn) return;
+  tone(580 + Math.random()*80, 0.08, "sawtooth", 0.04, 320);
+}
+function sTurbo(){
+  if(!soundOn) return;
+  tone(220, 0.45, "sawtooth", 0.15, 680);
+  setTimeout(() => tone(440, 0.35, "sine", 0.12, 880), 80);
+}
+function sBounce(){
+  if(!soundOn) return;
+  tone(160, 0.18, "triangle", 0.18, 280);
+}
+function sLapFanfare(){
+  if(!soundOn) return;
+  [440, 554.37, 659.25, 880].forEach((f, i) => {
+    setTimeout(() => tone(f, 0.25, "sawtooth", 0.15), i * 110);
+  });
+}
+
+/* ============================================================================
+   DEFINIÇÃO DA PISTA QUADRADA CLÁSSICA
+   ========================================================================== */
+function getTrackDimensions(){
+  const w = innerWidth, h = innerHeight;
+  const marginX = Math.max(28, w * 0.08);
+  const marginY = Math.max(65, h * 0.12);
+  const trackW = w - marginX * 2;
+  const trackH = h - marginY * 2;
+  const roadWidth = Math.min(trackW * 0.25, trackH * 0.28, 120);
+  const cornerRadius = roadWidth * 1.2;
+
+  return {
+    x: marginX,
+    y: marginY,
+    w: trackW,
+    h: trackH,
+    roadWidth: roadWidth,
+    radius: cornerRadius,
+    innerX: marginX + roadWidth,
+    innerY: marginY + roadWidth,
+    innerW: trackW - roadWidth * 2,
+    innerH: trackH - roadWidth * 2
+  };
+}
+
+/* Desenho da Pista Quadrada com Zebras e Linha de Chegada */
+function drawTrack(t){
+  // 1. Asfalto da pista com borda externa e ilha interna
+  gctx.save();
+  
+  // Base escura do asfalto
+  gctx.fillStyle = "#262338";
+  gctx.beginPath();
+  gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
+  gctx.fill();
+
+  // Ilha interna (grama/terra do miolo)
+  gctx.fillStyle = "#120e24";
+  gctx.beginPath();
+  gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
+  gctx.fill();
+
+  // 2. Zebras coloridas (curbs) nas bordas
+  drawCurbs(t);
+
+  // 3. Linha tracejada guia no centro da pista
+  drawCenterLine(t);
+
+  // 4. Linha de Chegada Quadriculada (Finish Line) na reta superior
+  drawFinishLine(t);
+
+  gctx.restore();
+}
+
+/* Zebras vermelhas e brancas nas bordas */
+function drawCurbs(t){
+  gctx.save();
+  gctx.lineWidth = 6;
+  gctx.setLineDash([14, 14]);
+  
+  // Borda Externa
+  gctx.strokeStyle = "#ff5f6d";
+  gctx.beginPath();
+  gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
+  gctx.stroke();
+
+  // Borda Interna
+  gctx.strokeStyle = "#ffffff";
+  gctx.beginPath();
+  gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
+  gctx.stroke();
+
+  gctx.restore();
+}
+
+/* Linha guia central da pista */
+function drawCenterLine(t){
+  const midX = t.x + t.roadWidth / 2;
+  const midY = t.y + t.roadWidth / 2;
+  const midW = t.w - t.roadWidth;
+  const midH = t.h - t.roadWidth;
+  const midR = Math.max(8, t.radius - t.roadWidth / 2);
+
+  gctx.save();
+  gctx.strokeStyle = "rgba(255, 210, 63, 0.35)";
+  gctx.lineWidth = 3;
+  gctx.setLineDash([12, 16]);
+  gctx.beginPath();
+  gctx.roundRect(midX, midY, midW, midH, midR);
+  gctx.stroke();
+  gctx.restore();
+}
+
+/* Linha de Chegada Quadriculada na reta superior */
+function drawFinishLine(t){
+  const lineX = t.x + t.w * 0.48;
+  const lineY1 = t.y;
+  const lineY2 = t.y + t.roadWidth;
+  const sqSize = 10;
+  const numRows = Math.ceil(t.roadWidth / sqSize);
+
+  gctx.save();
+  for(let r = 0; r < numRows; r++){
+    for(let c = 0; c < 2; c++){
+      gctx.fillStyle = (r + c) % 2 === 0 ? "#ffffff" : "#1a162b";
+      gctx.fillRect(lineX + c * sqSize, lineY1 + r * sqSize, sqSize, sqSize);
+    }
+  }
+  // Pórtico de Largada / Chegada
+  gctx.fillStyle = "#ffd23f";
+  gctx.font = '900 13px "Baloo 2", sans-serif';
+  gctx.textAlign = "center";
+  gctx.fillText("🏁 LARGADA / CHEGADA", lineX + sqSize, lineY1 - 8);
+  gctx.restore();
+}
+
+/* ============================================================================
+   ESTADO DO CARRINHO DE CORRIDA & FÍSICA
+   ========================================================================== */
+const car = {
+  x: 0,
+  y: 0,
+  angle: 0, // 0 = apontando para a direita
+  speed: 0,
+  baseSpeed: 5.5,
+  maxSpeed: 5.5,
+  turnSpeed: 0.052,
+  drift: 0,
+  width: 38,
+  length: 54,
+  color: "#ff5f6d",
+  // Vetor Força Lateral
+  vectorLeftActive: false,
+  vectorRightActive: false,
+  vectorIntensity: 0,
+  // Turbo
+  turboActive: false,
+  turboTimer: 0,
+  turboMaxTimer: 90, // ~1.5s
+  turboCharge: 1.0,  // 0 a 1
+  bounceTimer: 0
+};
+
+/* Marcas de pneu na pista */
+let skidMarks = [];
+
+/* Sistema de Voltas e Checkpoints */
+let lapCount = 1;
+const totalLaps = 3;
+const checkpoints = [false, false, false, false]; // Top-right, Bottom-right, Bottom-left, Top-left
+
+function initCarPosition(){
+  const t = getTrackDimensions();
+  car.x = t.x + t.w * 0.38;
+  car.y = t.y + t.roadWidth * 0.5;
+  car.angle = 0; // Apontando para a direita na reta superior
+  car.speed = 0;
+}
+initCarPosition();
+
+/* Teclas ativas */
+const keysPressed = {};
+
+/* ============================================================================
+   DESENHO DO CARRINHO & DO VETOR FORÇA LATERAL
+   ========================================================================== */
+function drawCar(){
+  gctx.save();
+  gctx.translate(car.x, car.y);
+  gctx.rotate(car.angle);
+
+  // 1. O VETOR FORÇA LATERAL (O grande diferencial pedagógico!)
+  if(car.vectorLeftActive || car.vectorRightActive){
+    drawForceVector();
+  }
+
+  // 2. Chamas do Turbo nos escapamentos
+  if(car.turboActive){
+    drawTurboFlames();
+  }
+
+  // 3. Rodas com pneus pretos grossos de corrida
+  gctx.fillStyle = "#161324";
+  const wheelW = 12, wheelL = 16;
+  // Dianteiras
+  gctx.fillRect(car.length * 0.22, -car.width * 0.55, wheelL, wheelW);
+  gctx.fillRect(car.length * 0.22, car.width * 0.55 - wheelW, wheelL, wheelW);
+  // Traseiras
+  gctx.fillRect(-car.length * 0.42, -car.width * 0.55, wheelL, wheelW);
+  gctx.fillRect(-car.length * 0.42, car.width * 0.55 - wheelW, wheelL, wheelW);
+
+  // 4. Chassi do Carrinho (Estilo Muscle Car / Hot Rod)
+  gctx.fillStyle = car.color;
+  gctx.strokeStyle = "#ffffff";
+  gctx.lineWidth = 2.5;
+  gctx.beginPath();
+  gctx.roundRect(-car.length * 0.45, -car.width * 0.42, car.length, car.width * 0.84, 8);
+  gctx.fill();
+  gctx.stroke();
+
+  // Faixa de corrida central
+  gctx.fillStyle = "#ffd23f";
+  gctx.fillRect(-car.length * 0.45, -car.width * 0.12, car.length, car.width * 0.24);
+
+  // Para-brisa dianteiro
+  gctx.fillStyle = "#1e1b38";
+  gctx.beginPath();
+  gctx.roundRect(car.length * 0.05, -car.width * 0.32, car.length * 0.22, car.width * 0.64, 4);
+  gctx.fill();
+
+  // Faróis dianteiros brilhantes
+  gctx.fillStyle = "#7ee8fa";
+  gctx.shadowColor = "#7ee8fa";
+  gctx.shadowBlur = 6;
+  gctx.fillRect(car.length * 0.48, -car.width * 0.35, 3, 7);
+  gctx.fillRect(car.length * 0.48, car.width * 0.35 - 7, 3, 7);
+  gctx.shadowBlur = 0;
+
+  // Número do carro
+  gctx.fillStyle = "#ffffff";
+  gctx.font = '900 12px "Baloo 2", sans-serif';
+  gctx.textAlign = "center";
+  gctx.textBaseline = "middle";
+  gctx.fillText("1", -car.length * 0.12, 1);
+
+  gctx.restore();
+}
+
+/* O VETOR FORÇA LATERAL — Visualiza com extrema clareza a direção relativa */
+function drawForceVector(){
+  const isLeft = car.vectorLeftActive;
+  const sideY = isLeft ? -car.width * 0.55 : car.width * 0.55;
+  const arrowDir = isLeft ? -1 : 1;
+  const arrowLength = 48;
+  const arrowColor = isLeft ? "#7ee8fa" : "#ffd23f";
+
+  gctx.save();
+  gctx.strokeStyle = arrowColor;
+  gctx.fillStyle = arrowColor;
+  gctx.lineWidth = 4;
+  gctx.lineCap = "round";
+  gctx.shadowColor = arrowColor;
+  gctx.shadowBlur = 10;
+
+  // Linha do vetor partindo da lateral do carrinho
+  gctx.beginPath();
+  gctx.moveTo(0, sideY);
+  gctx.lineTo(0, sideY + arrowDir * arrowLength);
+  gctx.stroke();
+
+  // Cabeça da seta
+  const headY = sideY + arrowDir * arrowLength;
+  gctx.beginPath();
+  gctx.moveTo(0, headY + arrowDir * 6);
+  gctx.lineTo(-9, headY);
+  gctx.lineTo(9, headY);
+  gctx.closePath();
+  gctx.fill();
+
+  // Rótulo textual ao lado da seta (ESQUERDA / DIREITA)
+  gctx.save();
+  gctx.translate(0, headY + arrowDir * 16);
+  gctx.rotate(isLeft ? Math.PI / 2 : -Math.PI / 2);
+  gctx.font = '900 12px "Baloo 2", sans-serif';
+  gctx.textAlign = "center";
+  gctx.textBaseline = "middle";
+  gctx.shadowBlur = 4;
+  gctx.fillText(isLeft ? "◄ ESQUERDA" : "DIREITA ►", 0, 0);
+  gctx.restore();
+
+  gctx.restore();
+}
+
+/* Chamas do Turbo nos escapamentos */
+function drawTurboFlames(){
+  gctx.save();
+  const flameL = 22 + Math.random() * 12;
+  const flameW = 6;
+  gctx.fillStyle = pick(["#7ee8fa", "#ff9a44", "#ffd23f", "#ffffff"]);
+  gctx.shadowColor = "#ff5f6d";
+  gctx.shadowBlur = 10;
+
+  // Escapamento esquerdo e direito
+  [-car.width * 0.3, car.width * 0.3].forEach(y => {
+    gctx.beginPath();
+    gctx.moveTo(-car.length * 0.45, y - flameW/2);
+    gctx.lineTo(-car.length * 0.45 - flameL, y);
+    gctx.lineTo(-car.length * 0.45, y + flameW/2);
+    gctx.closePath();
+    gctx.fill();
+  });
+  gctx.restore();
+}
+
+/* ============================================================================
+   LOOP PRINCIPAL DO JOGO (FÍSICA E ATUALIZAÇÃO)
+   ========================================================================== */
+function activateTurbo(){
+  if(!started) return;
+  if(car.turboCharge >= 0.35 && !car.turboActive){
+    car.turboActive = true;
+    car.turboTimer = car.turboMaxTimer;
+    car.turboCharge = Math.max(0, car.turboCharge - 0.5);
+    sTurbo();
+    // Confete suave no impulso
+    sprinkle(car.x, car.y, "#ffd23f");
+  }
+}
+
+function updatePhysics(){
+  if(!started) return;
+
+  const t = getTrackDimensions();
+
+  // 1. Direção / Curvas com vetor força
+  car.vectorLeftActive = !!(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]);
+  car.vectorRightActive = !!(keysPressed["ArrowRight"] || keysPressed["d"] || keysPressed["D"]);
+
+  const currentTurnSpeed = car.turnSpeed * Math.max(0.6, gameSpeed);
+
+  if(car.vectorLeftActive){
+    car.angle -= currentTurnSpeed;
+    if(Math.random() < 0.15) sTireScreech();
+  }
+  if(car.vectorRightActive){
+    car.angle += currentTurnSpeed;
+    if(Math.random() < 0.15) sTireScreech();
+  }
+
+  // 2. Velocidade e Turbo
+  const targetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
+  car.speed += (targetSpeed - car.speed) * 0.1;
+
+  if(car.turboActive){
+    car.turboTimer--;
+    if(car.turboTimer <= 0) car.turboActive = false;
+
+    // Fumaça e partículas de fogo no rastro do turbo
+    const tailX = car.x - Math.cos(car.angle) * (car.length * 0.5);
+    const tailY = car.y - Math.sin(car.angle) * (car.length * 0.5);
+    sprinkle(tailX + rnd(-3, 3), tailY + rnd(-3, 3), pick(["#ff9a44", "#ffd23f", "#7ee8fa"]));
+  } else {
+    // Recarrega o turbo gradualmente
+    car.turboCharge = Math.min(1.0, car.turboCharge + 0.0035);
+  }
+  $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
+
+  // 3. Atualiza posição do carro
+  car.x += Math.cos(car.angle) * car.speed;
+  car.y += Math.sin(car.angle) * car.speed;
+
+  // 4. Marcas de pneu na pista
+  if(car.vectorLeftActive || car.vectorRightActive || car.turboActive){
+    if(Math.random() < 0.6){
+      skidMarks.push({
+        x: car.x,
+        y: car.y,
+        alpha: 0.45
+      });
+      if(skidMarks.length > 80) skidMarks.shift();
+    }
+  }
+
+  // 5. Colisão Suave com Barreiras / Zebras (Ricochete sem frustração!)
+  if(car.bounceTimer > 0) car.bounceTimer--;
+
+  const outOfBoundsOuter = (
+    car.x < t.x + car.width/2 ||
+    car.x > t.x + t.w - car.width/2 ||
+    car.y < t.y + car.width/2 ||
+    car.y > t.y + t.h - car.width/2
+  );
+
+  const inInnerIsland = (
+    car.x > t.innerX - car.width/3 &&
+    car.x < t.innerX + t.innerW + car.width/3 &&
+    car.y > t.innerY - car.width/3 &&
+    car.y < t.innerY + t.innerH + car.width/3
+  );
+
+  if((outOfBoundsOuter || inInnerIsland) && car.bounceTimer === 0){
+    car.bounceTimer = 16;
+    sBounce();
+    // Ajusta o ângulo suavemente em direção ao centro da pista
+    const trackCenterX = t.x + t.w / 2;
+    const trackCenterY = t.y + t.h / 2;
+    const toCenterAngle = Math.atan2(trackCenterY - car.y, trackCenterX - car.x);
+    car.angle = toCenterAngle + rnd(-0.2, 0.2);
+    car.speed *= 0.75; // leve desaceleração macia
+    sprinkle(car.x, car.y, "#ffffff");
+  }
+
+  // 6. Verificação de Checkpoints e Voltas
+  checkLapProgress(t);
+
+  // 7. Atualização do Velocímetro no HUD
+  const displayKmh = Math.round(car.speed * 20);
+  $("speedGauge").textContent = `Velocidade: ${displayKmh} km/h ${car.turboActive ? "🚀 TURBO!" : ""}`;
+}
+
+/* Verificação de Checkpoints ao longo dos 4 quadrantes da pista quadrada */
+function checkLapProgress(t){
+  const midX = t.x + t.w / 2;
+  const midY = t.y + t.h / 2;
+
+  // Checkpoint 0: Reta superior direita
+  if(car.x > midX && car.y < midY) checkpoints[0] = true;
+  // Checkpoint 1: Reta inferior direita
+  if(checkpoints[0] && car.x > midX && car.y > midY) checkpoints[1] = true;
+  // Checkpoint 2: Reta inferior esquerda
+  if(checkpoints[1] && car.x < midX && car.y > midY) checkpoints[2] = true;
+  // Checkpoint 3: Reta superior esquerda (aproximando da linha de chegada)
+  if(checkpoints[2] && car.x < midX && car.y < midY) checkpoints[3] = true;
+
+  // Cruzou a linha de chegada após completar todos os checkpoints!
+  const finishX = t.x + t.w * 0.48;
+  if(checkpoints[3] && car.x >= finishX && car.x <= finishX + 40 && car.y < t.y + t.roadWidth){
+    // Reset checkpoints
+    for(let i = 0; i < 4; i++) checkpoints[i] = false;
+    
+    lapCount++;
+    sLapFanfare();
+    confetti();
+
+    if(lapCount <= totalLaps){
+      $("lapInfo").textContent = `🏁 Volta ${lapCount} / ${totalLaps}`;
+      speak(`Volta ${lapCount}! Pise fundo!`);
+    } else {
+      $("lapInfo").textContent = `🏆 VITÓRIA! Campeão da Corrida Rock!`;
+      speak("Parabéns! Você venceu a corrida!");
+      fireworks(innerWidth / 2, innerHeight / 2, Math.random() * 360);
+      setTimeout(() => {
+        lapCount = 1;
+        $("lapInfo").textContent = `🏁 Volta 1 / ${totalLaps}`;
+      }, 5000);
+    }
+  }
+}
+
+/* ============================================================================
+   RENDERIZAÇÃO
+   ========================================================================== */
+function render(){
+  gctx.clearRect(0, 0, innerWidth, innerHeight);
+
+  const t = getTrackDimensions();
+  
+  // 1. Desenha a pista quadrada
+  drawTrack(t);
+
+  // 2. Desenha marcas de derrapagem
+  gctx.save();
+  skidMarks.forEach(s => {
+    s.alpha -= 0.002;
+    gctx.fillStyle = `rgba(18, 14, 34, ${Math.max(0, s.alpha)})`;
+    gctx.beginPath();
+    gctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
+    gctx.fill();
+  });
+  gctx.restore();
+
+  // 3. Atualiza e desenha o carrinho com vetor força
+  updatePhysics();
+  drawCar();
+
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+/* ============================================================================
+   CONTROLE DE TECLADO E BOTÕES TOUCH
+   ========================================================================== */
+function onKeyDown(e){
+  if(!travaOn && (e.key === "F5" || e.key === "F11" || e.key === "F12")) return;
+  if(!travaOn && (e.metaKey || e.ctrlKey || e.altKey)) return;
+  e.preventDefault();
+  if(!started) return;
+
+  keysPressed[e.key] = true;
+
+  if(e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W"){
+    activateTurbo();
+  }
+}
+
+function onKeyUp(e){
+  keysPressed[e.key] = false;
+}
+
+window.addEventListener("keydown", onKeyDown);
+window.addEventListener("keyup", onKeyUp);
+
+// Botões Touch
+const btnLeft = $("btnLeft");
+const btnRight = $("btnRight");
+const btnTurbo = $("btnTurbo");
+
+function bindTouch(btn, keyName){
+  btn.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    btn.classList.add("active");
+    keysPressed[keyName] = true;
+  });
+  const release = e => {
+    e.preventDefault();
+    btn.classList.remove("active");
+    keysPressed[keyName] = false;
+  };
+  btn.addEventListener("pointerup", release);
+  btn.addEventListener("pointercancel", release);
+  btn.addEventListener("pointerleave", release);
+}
+
+bindTouch(btnLeft, "ArrowLeft");
+bindTouch(btnRight, "ArrowRight");
+
+btnTurbo.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  btnTurbo.classList.add("active");
+  activateTurbo();
+});
+btnTurbo.addEventListener("pointerup", () => btnTurbo.classList.remove("active"));
+btnTurbo.addEventListener("pointercancel", () => btnTurbo.classList.remove("active"));
+
+/* ============================================================================
+   INICIALIZAÇÃO E FERRAMENTAS
+   ========================================================================== */
+$("btnStart").addEventListener("click", () => {
+  started = true;
+  $("start").remove();
+  try{ ac().resume(); }catch(e){}
+  travar();
+  speak("Prepare-se! 3, 2, 1, já!");
+  sTurbo();
+
+  // Inicia a batida de Rock n' Roll em loop suave
+  if(!musicTimer){
+    musicTimer = setInterval(playRockBeat, 240); // ~125 BPM
+  }
+});
+
+$("selSpeed").addEventListener("change", e => {
+  gameSpeed = parseFloat(e.target.value) || 0.55;
+  e.target.blur();
+});
+
+$("btnFull").addEventListener("click", () => {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.();
+});
+
+$("btnSound").addEventListener("click", () => {
+  soundOn = !soundOn;
+  $("btnSound").textContent = soundOn ? "🔊 Som: ligado" : "🔇 Som: desligado";
+});
+
+$("btnTrava").addEventListener("click", travaToggle);
+document.addEventListener("trava", e => {
+  document.body.classList.toggle("travado", e.detail.on);
+  $("btnTrava").textContent = e.detail.on ? "🔒 Travado" : "🔓 Travar teclado";
+});
+</script>
+</body>
+</html>

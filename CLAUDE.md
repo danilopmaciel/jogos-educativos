@@ -29,6 +29,8 @@ lib/            biblioteca compartilhada — carregue nesta ordem:
   trava.js        trava de criança: travar/destravar/travaToggle, travaOn
   controles.js    teclado virtual e gamepad touch para celular/tablet
 jogos/
+  corrida-rock/
+    index.html      jogo de corrida estilo Rock n' Roll com vetor força lateral
   painel-sensorial/
     index.html      painel sensorial Montessori estilo Pok Pok para 2 e 3 anos
   alfabeto-magico/
