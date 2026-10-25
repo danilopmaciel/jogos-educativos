@@ -218,11 +218,12 @@
 
 <!-- Modal de Início -->
 <div id="start">
-  <h1>Corrida Rock <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.8.0</span></h1>
+  <h1>Corrida Rock <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v1.9.0</span></h1>
   <p>Pise fundo na pista espaçosa com o poder do Rock n' Roll e dispute com seu próprio fantasma! 🏎️🎸</p>
   
   <div class="tip-box">
     <b>💡 Dicas Especiais para os Pequenos Pilotos:</b><br>
+    • <b>Amortecedores Realistas:</b> O chassi agora se inclina e comprime a suspensão nas curvas, além de empinar com o turbo!<br>
     • <b>Flecha Vetor de Força:</b> Ao virar, uma flecha luminosa com penas surge ao lado do carrinho mostrando para onde a força está empurrando!<br>
     • <b>Fantasma da Melhor Volta (👻):</b> A cada volta completada, o carrinho fantasma translúcido refaz sua volta mais rápida para você tentar superar seu recorde!
   </div>
@@ -329,20 +330,20 @@ function sLapFanfare(){
    ========================================================================== */
 function getTrackDimensions(){
   const w = innerWidth, h = innerHeight;
-  // Margens dinâmicas reduzidas para aproveitar melhor a tela
-  const marginX = Math.max(16, w * 0.04);
-  const marginY = Math.max(48, h * 0.075);
+  // Margens dinâmicas super compactas para liberar área máxima para a pista
+  const marginX = Math.max(10, w * 0.025);
+  const marginY = Math.max(36, h * 0.055);
   const trackW = w - marginX * 2;
   const trackH = h - marginY * 2;
   
-  // Pista bem mais espaçosa (largura aumentada em ~50%, até 175px)
-  let roadWidth = Math.min(trackW * 0.33, trackH * 0.33, 175);
-  // Mantém a ilha interna do miolo com dimensões mínimas confortáveis
-  if(trackW - roadWidth * 2 < 85) roadWidth = (trackW - 85) / 2;
-  if(trackH - roadWidth * 2 < 65) roadWidth = (trackH - 65) / 2;
-  roadWidth = Math.max(60, roadWidth);
+  // Pista extra larga (largura de pista aumentada para até 240px mantendo miolo jogável)
+  let roadWidth = Math.min(trackW * 0.38, trackH * 0.38, 240);
+  // Mantém a ilha interna do miolo com proporções estéticas e sem fechar totalmente
+  if(trackW - roadWidth * 2 < 70) roadWidth = (trackW - 70) / 2;
+  if(trackH - roadWidth * 2 < 55) roadWidth = (trackH - 55) / 2;
+  roadWidth = Math.max(75, roadWidth);
 
-  const cornerRadius = Math.max(roadWidth * 1.15, 65);
+  const cornerRadius = Math.max(roadWidth * 1.05, 60);
 
   return {
     x: marginX,
@@ -360,22 +361,37 @@ function getTrackDimensions(){
 
 /* Desenho da Pista Quadrada com Zebras e Linha de Chegada */
 function drawTrack(t){
-  // 1. Asfalto da pista com borda externa e ilha interna
   gctx.save();
   
-  // Base escura do asfalto
-  gctx.fillStyle = "#262338";
+  // 1. Asfalto da pista com borda externa com textura moderna de corrida
+  // Asfalto base granulado escuro
+  const asphaltGrad = gctx.createLinearGradient(t.x, t.y, t.x + t.w, t.y + t.h);
+  asphaltGrad.addColorStop(0, "#221f33");
+  asphaltGrad.addColorStop(0.5, "#28243c");
+  asphaltGrad.addColorStop(1, "#1d1a2d");
+  
+  gctx.fillStyle = asphaltGrad;
   gctx.beginPath();
   gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
   gctx.fill();
 
-  // Ilha interna (grama/terra do miolo)
-  gctx.fillStyle = "#120e24";
+  // Borda suave de asfalto gasto / borracha aderente
+  gctx.lineWidth = 14;
+  gctx.strokeStyle = "rgba(12, 9, 24, 0.45)";
+  gctx.beginPath();
+  gctx.roundRect(t.x + 7, t.y + 7, t.w - 14, t.h - 14, Math.max(10, t.radius - 7));
+  gctx.stroke();
+
+  // Ilha interna (grama/terra do miolo com relevo sombreado)
+  gctx.shadowColor = "rgba(0,0,0,0.7)";
+  gctx.shadowBlur = 16;
+  gctx.fillStyle = "#100d20";
   gctx.beginPath();
   gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
   gctx.fill();
+  gctx.shadowBlur = 0;
 
-  // 2. Zebras coloridas (curbs) nas bordas
+  // 2. Zebras coloridas (curbs 3D chanfradas) nas bordas
   drawCurbs(t);
 
   // 3. Linha tracejada guia no centro da pista
@@ -387,20 +403,33 @@ function drawTrack(t){
   gctx.restore();
 }
 
-/* Zebras vermelhas e brancas nas bordas */
+/* Zebras vermelhas e brancas nas bordas com relevo 3D */
 function drawCurbs(t){
   gctx.save();
-  gctx.lineWidth = 6;
-  gctx.setLineDash([14, 14]);
+  gctx.lineWidth = 8;
+  gctx.lineCap = "butt";
   
-  // Borda Externa
-  gctx.strokeStyle = "#ff5f6d";
+  // Borda Externa - Base branca e faixas vermelhas chanfradas
+  gctx.strokeStyle = "#ffffff";
+  gctx.beginPath();
+  gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
+  gctx.stroke();
+
+  gctx.strokeStyle = "#ff4757";
+  gctx.setLineDash([16, 16]);
   gctx.beginPath();
   gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
   gctx.stroke();
 
   // Borda Interna
+  gctx.setLineDash([]);
   gctx.strokeStyle = "#ffffff";
+  gctx.beginPath();
+  gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
+  gctx.stroke();
+
+  gctx.strokeStyle = "#ff4757";
+  gctx.setLineDash([14, 14]);
   gctx.beginPath();
   gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
   gctx.stroke();
@@ -464,6 +493,11 @@ const car = {
   width: 38,
   length: 54,
   color: "#ff5f6d",
+  // Sistema de Amortecedores / Suspensão Dinâmica
+  roll: 0,        // Compressão lateral/inclinação nas curvas (-1 a 1)
+  pitch: 0,       // Empinamento com aceleração/turbo (-1 a 1)
+  steerAngle: 0,  // Ângulo visual das rodas dianteiras
+  suspensionOffsets: { fl: 0, fr: 0, rl: 0, rr: 0 },
   // Vetor Força Lateral
   vectorLeftActive: false,
   vectorRightActive: false,
@@ -542,61 +576,176 @@ function drawCar(){
   gctx.translate(car.x, car.y);
   gctx.rotate(car.angle);
 
-  // 1. O VETOR FORÇA LATERAL (O grande diferencial pedagógico!)
+  // 1. Sombra projetada do carro no asfalto com visual dinâmico
+  gctx.save();
+  gctx.fillStyle = "rgba(10, 8, 20, 0.48)";
+  gctx.beginPath();
+  // Sombra desloca levemente oposta à inclinação
+  gctx.roundRect(-car.length * 0.44 + 4, -car.width * 0.48 + 4 + car.roll * 2, car.length, car.width * 0.96, 10);
+  gctx.fill();
+  gctx.restore();
+
+  // 2. O VETOR FORÇA LATERAL (O grande diferencial pedagógico!)
   if(car.vectorLeftActive || car.vectorRightActive){
     drawForceVector();
   }
 
-  // 2. Chamas do Turbo nos escapamentos
+  // 3. Chamas do Turbo nos escapamentos
   if(car.turboActive){
     drawTurboFlames();
   }
 
-  // 3. Rodas com pneus pretos grossos de corrida
-  gctx.fillStyle = "#161324";
-  const wheelW = 12, wheelL = 16;
-  // Dianteiras
-  gctx.fillRect(car.length * 0.22, -car.width * 0.55, wheelL, wheelW);
-  gctx.fillRect(car.length * 0.22, car.width * 0.55 - wheelW, wheelL, wheelW);
-  // Traseiras
-  gctx.fillRect(-car.length * 0.42, -car.width * 0.55, wheelL, wheelW);
-  gctx.fillRect(-car.length * 0.42, car.width * 0.55 - wheelW, wheelL, wheelW);
+  // 4. Rodas com suspensão, amortecedores visíveis e pneus esportivos
+  const wheelW = 12, wheelL = 18;
+  const flX = car.length * 0.22, flY = -car.width * 0.55;
+  const frX = car.length * 0.22, frY = car.width * 0.55 - wheelW;
+  const rlX = -car.length * 0.42, rlY = -car.width * 0.55;
+  const rrX = -car.length * 0.42, rrY = car.width * 0.55 - wheelW;
 
-  // 4. Chassi do Carrinho (Estilo Muscle Car / Hot Rod)
-  gctx.fillStyle = car.color;
+  // Braços de suspensão e molas esportivas nos 4 cantos
+  function drawSuspensionArm(wx, wy, isFront, isLeft){
+    gctx.save();
+    gctx.lineWidth = 3.5;
+    gctx.strokeStyle = "#4b4668";
+    const bodyAnchorY = isLeft ? -car.width * 0.32 : car.width * 0.32;
+    gctx.beginPath();
+    gctx.moveTo(wx + wheelL * 0.5, bodyAnchorY);
+    gctx.lineTo(wx + wheelL * 0.5, wy + (isLeft ? wheelW : 0));
+    gctx.stroke();
+
+    // Mola helicoidal amortecedora (espiral vermelha/amarela esportiva)
+    gctx.lineWidth = 2;
+    gctx.strokeStyle = isFront ? "#ffd23f" : "#ff4757";
+    const springMidY = (bodyAnchorY + wy + (isLeft ? wheelW : 0)) * 0.5;
+    gctx.beginPath();
+    gctx.moveTo(wx + wheelL * 0.3, springMidY - 3);
+    gctx.lineTo(wx + wheelL * 0.7, springMidY);
+    gctx.lineTo(wx + wheelL * 0.3, springMidY + 3);
+    gctx.stroke();
+    gctx.restore();
+  }
+  drawSuspensionArm(flX, flY, true, true);
+  drawSuspensionArm(frX, frY, true, false);
+  drawSuspensionArm(rlX, rlY, false, true);
+  drawSuspensionArm(rrX, rrY, false, false);
+
+  // Rodas dianteiras com esterçamento dinâmico
+  function drawWheel(wx, wy, steer, isLeft){
+    gctx.save();
+    gctx.translate(wx + wheelL * 0.5, wy + wheelW * 0.5);
+    if(steer) gctx.rotate(steer);
+    // Pneu de borracha vulcanizada
+    gctx.fillStyle = "#120f20";
+    gctx.beginPath();
+    gctx.roundRect(-wheelL * 0.5, -wheelW * 0.5, wheelL, wheelW, 4);
+    gctx.fill();
+    // Calota / Roda de liga leve dourada/prata
+    gctx.fillStyle = "#7b7495";
+    gctx.fillRect(-wheelL * 0.25, -wheelW * 0.25, wheelL * 0.5, wheelW * 0.5);
+    gctx.fillStyle = "#ffdd53";
+    gctx.beginPath();
+    gctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+    gctx.fill();
+    gctx.restore();
+  }
+  drawWheel(flX, flY, car.steerAngle, true);
+  drawWheel(frX, frY, car.steerAngle, false);
+  drawWheel(rlX, rlY, 0, true);
+  drawWheel(rrX, rrY, 0, false);
+
+  // 5. Chassi do Carrinho com inclinação do amortecedor (Roll & Pitch lateral)
+  gctx.save();
+  // Translação lateral do chassi provocada pela compressão da mola
+  const bodyRollOffset = car.roll * 4.2;
+  const bodyPitchOffset = car.pitch * 2.5;
+  gctx.translate(bodyPitchOffset, bodyRollOffset);
+  // Escala assimétrica simulando visão em perspectiva da carroceria inclinando
+  const scaleY = 1.0 + Math.abs(car.roll) * 0.08;
+  gctx.scale(1.0, scaleY);
+
+  // Chassi base com gradiente moderno de pintura metálica
+  const bodyGrad = gctx.createLinearGradient(-car.length * 0.45, -car.width * 0.42, -car.length * 0.45, car.width * 0.42);
+  bodyGrad.addColorStop(0, "#ff758c");
+  bodyGrad.addColorStop(0.35, car.color);
+  bodyGrad.addColorStop(0.7, "#d63031");
+  bodyGrad.addColorStop(1, "#9e1515");
+
+  gctx.fillStyle = bodyGrad;
   gctx.strokeStyle = "#ffffff";
   gctx.lineWidth = 2.5;
+  gctx.shadowColor = "rgba(0,0,0,0.4)";
+  gctx.shadowBlur = 8;
   gctx.beginPath();
-  gctx.roundRect(-car.length * 0.45, -car.width * 0.42, car.length, car.width * 0.84, 8);
+  gctx.roundRect(-car.length * 0.45, -car.width * 0.42, car.length, car.width * 0.84, 9);
   gctx.fill();
   gctx.stroke();
+  gctx.shadowBlur = 0;
 
-  // Faixa de corrida central
-  gctx.fillStyle = "#ffd23f";
+  // Faixa de corrida central com brilho
+  const stripeGrad = gctx.createLinearGradient(0, -car.width * 0.12, 0, car.width * 0.12);
+  stripeGrad.addColorStop(0, "#fff275");
+  stripeGrad.addColorStop(0.5, "#ffd23f");
+  stripeGrad.addColorStop(1, "#f39c12");
+  gctx.fillStyle = stripeGrad;
   gctx.fillRect(-car.length * 0.45, -car.width * 0.12, car.length, car.width * 0.24);
 
-  // Para-brisa dianteiro
-  gctx.fillStyle = "#1e1b38";
+  // Para-brisa dianteiro e vidro traseiro escurecido com reflexo azul celeste
+  gctx.fillStyle = "#18142c";
   gctx.beginPath();
   gctx.roundRect(car.length * 0.05, -car.width * 0.32, car.length * 0.22, car.width * 0.64, 4);
   gctx.fill();
+  // Reflexo diagonal do vidro
+  gctx.strokeStyle = "rgba(126, 232, 250, 0.65)";
+  gctx.lineWidth = 2;
+  gctx.beginPath();
+  gctx.moveTo(car.length * 0.08, -car.width * 0.22);
+  gctx.lineTo(car.length * 0.22, car.width * 0.18);
+  gctx.stroke();
 
-  // Faróis dianteiros brilhantes
-  gctx.fillStyle = "#7ee8fa";
+  // Vidro traseiro
+  gctx.fillStyle = "#18142c";
+  gctx.beginPath();
+  gctx.roundRect(-car.length * 0.32, -car.width * 0.28, car.length * 0.14, car.width * 0.56, 3);
+  gctx.fill();
+
+  // Faróis dianteiros brilhantes com xenônio moderno
+  gctx.fillStyle = "#ffffff";
   gctx.shadowColor = "#7ee8fa";
-  gctx.shadowBlur = 6;
-  gctx.fillRect(car.length * 0.48, -car.width * 0.35, 3, 7);
-  gctx.fillRect(car.length * 0.48, car.width * 0.35 - 7, 3, 7);
+  gctx.shadowBlur = 10;
+  gctx.fillRect(car.length * 0.48, -car.width * 0.35, 4, 8);
+  gctx.fillRect(car.length * 0.48, car.width * 0.35 - 8, 4, 8);
   gctx.shadowBlur = 0;
 
-  // Número do carro
+  // Lanternas traseiras de freio neon
+  gctx.fillStyle = "#ff2244";
+  gctx.shadowColor = "#ff2244";
+  gctx.shadowBlur = 6;
+  gctx.fillRect(-car.length * 0.46, -car.width * 0.36, 3, 7);
+  gctx.fillRect(-car.length * 0.46, car.width * 0.36 - 7, 3, 7);
+  gctx.shadowBlur = 0;
+
+  // Aerofólio esportivo traseiro (Spoiler)
+  gctx.fillStyle = "#262338";
+  gctx.strokeStyle = "#ffd23f";
+  gctx.lineWidth = 1.5;
+  gctx.beginPath();
+  gctx.roundRect(-car.length * 0.49, -car.width * 0.42, 5, car.width * 0.84, 2);
+  gctx.fill();
+  gctx.stroke();
+
+  // Número do carro em relevo
   gctx.fillStyle = "#ffffff";
-  gctx.font = '900 12px "Baloo 2", sans-serif';
+  gctx.font = '900 13px "Baloo 2", sans-serif';
   gctx.textAlign = "center";
   gctx.textBaseline = "middle";
-  gctx.fillText("1", -car.length * 0.12, 1);
+  gctx.shadowColor = "rgba(0,0,0,0.6)";
+  gctx.shadowBlur = 4;
+  gctx.fillText("1", -car.length * 0.1, 1);
+  gctx.shadowBlur = 0;
 
-  gctx.restore();
+  gctx.restore(); // Fecha restauração do Chassi (Roll & Pitch)
+
+  gctx.restore(); // Fecha restauração do Carro
 }
 
 /* O VETOR FORÇA LATERAL — Desenhado como uma Flecha estilizada com ponta e penas */
@@ -729,7 +878,10 @@ function getGhostPose(elapsed){
       x: t.x + f.nx * t.w,
       y: t.y + f.ny * t.h,
       angle: f.angle,
-      turbo: f.turbo
+      turbo: f.turbo,
+      roll: f.roll || 0,
+      pitch: f.pitch || 0,
+      steerAngle: f.steerAngle || 0
     };
   }
 
@@ -745,12 +897,18 @@ function getGhostPose(elapsed){
 
   const nx = f0.nx + (f1.nx - f0.nx) * factor;
   const ny = f0.ny + (f1.ny - f0.ny) * factor;
+  const roll = (f0.roll || 0) + ((f1.roll || 0) - (f0.roll || 0)) * factor;
+  const pitch = (f0.pitch || 0) + ((f1.pitch || 0) - (f0.pitch || 0)) * factor;
+  const steerAngle = (f0.steerAngle || 0) + ((f1.steerAngle || 0) - (f0.steerAngle || 0)) * factor;
 
   return {
     x: t.x + nx * t.w,
     y: t.y + ny * t.h,
     angle: f0.angle + dAngle * factor,
-    turbo: f0.turbo
+    turbo: f0.turbo,
+    roll,
+    pitch,
+    steerAngle
   };
 }
 
@@ -760,7 +918,7 @@ function drawGhostCar(pose){
   gctx.save();
   gctx.translate(pose.x, pose.y);
   gctx.rotate(pose.angle);
-  gctx.globalAlpha = 0.52; // Translúcido holográfico
+  gctx.globalAlpha = 0.55; // Translúcido holográfico
 
   // 1. Chamas translúcidas do turbo do fantasma
   if(pose.turbo){
@@ -780,15 +938,36 @@ function drawGhostCar(pose){
     gctx.restore();
   }
 
-  // 2. Rodas holográficas
-  gctx.fillStyle = "rgba(18, 32, 58, 0.75)";
+  // 2. Rodas holográficas com esterçamento
   const wheelW = 12, wheelL = 16;
-  gctx.fillRect(car.length * 0.22, -car.width * 0.55, wheelL, wheelW);
-  gctx.fillRect(car.length * 0.22, car.width * 0.55 - wheelW, wheelL, wheelW);
-  gctx.fillRect(-car.length * 0.42, -car.width * 0.55, wheelL, wheelW);
-  gctx.fillRect(-car.length * 0.42, car.width * 0.55 - wheelW, wheelL, wheelW);
+  const flX = car.length * 0.22, flY = -car.width * 0.55;
+  const frX = car.length * 0.22, frY = car.width * 0.55 - wheelW;
+  const rlX = -car.length * 0.42, rlY = -car.width * 0.55;
+  const rrX = -car.length * 0.42, rrY = car.width * 0.55 - wheelW;
 
-  // 3. Chassi translúcido ciano
+  function drawGhostWheel(wx, wy, steer){
+    gctx.save();
+    gctx.translate(wx + wheelL * 0.5, wy + wheelW * 0.5);
+    if(steer) gctx.rotate(steer);
+    gctx.fillStyle = "rgba(18, 32, 58, 0.75)";
+    gctx.beginPath();
+    gctx.roundRect(-wheelL * 0.5, -wheelW * 0.5, wheelL, wheelW, 4);
+    gctx.fill();
+    gctx.restore();
+  }
+  drawGhostWheel(flX, flY, pose.steerAngle);
+  drawGhostWheel(frX, frY, pose.steerAngle);
+  drawGhostWheel(rlX, rlY, 0);
+  drawGhostWheel(rrX, rrY, 0);
+
+  // 3. Chassi translúcido ciano com inclinação dos amortecedores
+  gctx.save();
+  const ghostRollOffset = (pose.roll || 0) * 4.2;
+  const ghostPitchOffset = (pose.pitch || 0) * 2.5;
+  gctx.translate(ghostPitchOffset, ghostRollOffset);
+  const ghostScaleY = 1.0 + Math.abs(pose.roll || 0) * 0.08;
+  gctx.scale(1.0, ghostScaleY);
+
   gctx.fillStyle = "rgba(72, 202, 228, 0.55)";
   gctx.strokeStyle = "#ffffff";
   gctx.lineWidth = 2.2;
@@ -814,7 +993,9 @@ function drawGhostCar(pose){
   gctx.fillRect(car.length * 0.48, -car.width * 0.35, 3, 7);
   gctx.fillRect(car.length * 0.48, car.width * 0.35 - 7, 3, 7);
 
-  gctx.restore();
+  gctx.restore(); // Fecha chassi do fantasma
+
+  gctx.restore(); // Fecha pose do fantasma
 
   // 4. Tag flutuante "👻 RECORDE" acima do fantasma
   gctx.save();
@@ -934,14 +1115,39 @@ function updatePhysics(){
 
   const currentTurnSpeed = car.turnSpeed * Math.max(0.6, gameSpeed);
 
+  let turnDirection = 0;
   if(car.vectorLeftActive){
     car.angle -= currentTurnSpeed;
+    turnDirection -= 1;
     if(Math.random() < 0.15) sTireScreech();
   }
   if(car.vectorRightActive){
     car.angle += currentTurnSpeed;
+    turnDirection += 1;
     if(Math.random() < 0.15) sTireScreech();
   }
+
+  // 1.1 Dinâmica de Amortecedores e Suspensão (Compressão lateral / Roll & Pitch)
+  // Alvo de compressão lateral: se vira para esquerda (turnDirection < 0), o chassi rola para a direita (+roll) pela força centrífuga
+  const targetRoll = turnDirection * 0.9;
+  car.roll += (targetRoll - car.roll) * 0.18;
+
+  // Alvo de empinamento / pitch: ao acelerar ou ligar turbo, a traseira assenta e a frente empina levemente
+  const targetPitch = car.turboActive ? 0.85 : (car.speed > 0.5 ? 0.35 : 0);
+  car.pitch += (targetPitch - car.pitch) * 0.14;
+
+  // Esterçamento suave das rodas dianteiras
+  const targetSteer = turnDirection * 0.38;
+  car.steerAngle += (targetSteer - car.steerAngle) * 0.25;
+
+  // Compressão dos amortecedores nos 4 cantos:
+  // - Lado de fora da curva comprime (suspensão afunda)
+  // - Lado de dentro da curva estica
+  const maxCompression = 4.5;
+  car.suspensionOffsets.fl = -car.roll * maxCompression + car.pitch * 1.5;
+  car.suspensionOffsets.fr = car.roll * maxCompression + car.pitch * 1.5;
+  car.suspensionOffsets.rl = -car.roll * (maxCompression * 0.8) - car.pitch * 2.2;
+  car.suspensionOffsets.rr = car.roll * (maxCompression * 0.8) - car.pitch * 2.2;
 
   // 2. Velocidade e Turbo
   const targetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
@@ -1024,7 +1230,10 @@ function updatePhysics(){
       nx: (car.x - t.x) / t.w,
       ny: (car.y - t.y) / t.h,
       angle: car.angle,
-      turbo: car.turboActive
+      turbo: car.turboActive,
+      roll: car.roll,
+      pitch: car.pitch,
+      steerAngle: car.steerAngle
     });
     // Atualiza cronômetro no HUD a cada frame
     $("lapTimer").textContent = `⏱️ ${formatTime(elapsed)}`;
