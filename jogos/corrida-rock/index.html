@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Corrida Rock — Jogos para Aprender</title>
+<title>Corrida Rock 3D Multiplayer ÔÇö Jogos para Aprender</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body {
@@ -12,12 +12,7 @@
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
     touch-action:none; overscroll-behavior:none;
   }
-  #bg {
-    position:fixed; inset:0; z-index:0;
-    background:radial-gradient(circle at 50% 50%, #201742 0%, #0d091a 70%);
-    transition:background 700ms ease;
-  }
-  #gameCanvas { position:fixed; inset:0; z-index:1; }
+  #game3dContainer { position:fixed; inset:0; z-index:1; }
   #fx { position:fixed; inset:0; z-index:3; pointer-events:none; }
   #flash { position:fixed; inset:0; z-index:4; pointer-events:none; opacity:0; mix-blend-mode:screen; }
 
@@ -54,6 +49,10 @@
     text-shadow:0 2px 0 rgba(0,0,0,.6);
   }
   #speedGauge { color:#b8f2e6; }
+  #multiplayerTag {
+    background:rgba(56, 103, 214, 0.45); border:1px solid #7ee8fa;
+    padding:2px 10px; border-radius:12px; font-size:0.85em; color:#fff;
+  }
 
   /* Barra de Turbo no HUD */
   #turboMeterWrapper {
@@ -67,7 +66,7 @@
     transition:width 0.1s linear;
   }
 
-  /* Banner de Notificação de Volta / Recorde */
+  /* Banner de Notifica├º├úo de Volta / Recorde */
   #lapBanner {
     position:fixed; top:12vh; left:50%; transform:translateX(-50%) scale(0.8);
     z-index:9; pointer-events:none; opacity:0;
@@ -133,136 +132,199 @@
   }
   .btn-label { font-size:clamp(10px, 2.2vw, 13px); font-weight:800; margin-top:-2px; }
 
-  /* Modal de Início */
+  /* Modal de In├¡cio e Sele├º├úo de Modo */
   #start {
     position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:flex-start;
-    flex-direction:column; gap:2.2vh; background:rgba(14,10,32,.97); color:#fff; text-align:center;
-    padding:5vh 6vw 8vh; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y;
+    flex-direction:column; gap:2vh; background:rgba(14,10,32,.97); color:#fff; text-align:center;
+    padding:4vh 6vw 6vh; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y;
   }
   #start h1 {
-    font-size:min(8.5vh,10.5vw); font-weight:900; line-height:1.1;
+    font-size:min(7.5vh,9.5vw); font-weight:900; line-height:1.1;
     background:linear-gradient(90deg,#ff5f6d,#ffc371,#7ee8fa,#b06ab3);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  #start p { font-size:min(2.8vh,4.2vw); opacity:.85; max-width:28em; line-height:1.5; }
-  #start .tip-box {
+  #start p { font-size:min(2.4vh,3.8vw); opacity:.85; max-width:30em; line-height:1.4; }
+  
+  /* Seletor de Modo Solo vs Multiplayer */
+  .mode-selector {
+    display:flex; gap:16px; width:100%; max-width:28em; justify-content:center;
+  }
+  .mode-card {
+    flex:1; padding:14px 12px; border-radius:18px; border:2px solid rgba(255,255,255,0.2);
+    background:rgba(255,255,255,0.06); cursor:pointer; transition:all .2s; text-align:center;
+  }
+  .mode-card.selected {
+    border-color:#ffd23f; background:rgba(255, 210, 63, 0.16); box-shadow:0 0 20px rgba(255,210,63,0.3);
+  }
+  .mode-card h3 { font-size:1.15em; color:#ffd23f; margin-bottom:4px; }
+  .mode-card p { font-size:0.85em; opacity:0.8; }
+
+  .multiplayer-inputs {
+    display:none; flex-direction:column; gap:10px; width:100%; max-width:28em; text-align:left;
+    background:rgba(255,255,255,0.05); padding:14px; border-radius:16px; border:1px solid rgba(255,255,255,0.15);
+  }
+  .multiplayer-inputs.show { display:flex; }
+  .multiplayer-inputs label { font-size:0.9em; font-weight:800; color:#7ee8fa; }
+  .multiplayer-inputs input {
+    font:inherit; font-size:1em; padding:8px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.3);
+    background:#1b1633; color:#fff; font-weight:700;
+  }
+
+  .tip-box {
     background:rgba(255,255,255,0.08); border:2px solid rgba(255,210,63,0.3);
     border-radius:18px; padding:12px 18px; max-width:28em;
-    font-size:min(2.1vh,3.2vw); text-align:left; line-height:1.45;
+    font-size:min(1.9vh,3vw); text-align:left; line-height:1.4;
   }
-  #start button {
-    font:inherit; font-size:min(3.4vh,5vw); font-weight:800; padding:.7em 1.8em; border:0; cursor:pointer;
+  #start button#btnStart {
+    font:inherit; font-size:min(3.2vh,4.6vw); font-weight:800; padding:.6em 1.8em; border:0; cursor:pointer;
     border-radius:999px; background:linear-gradient(90deg,#ff9a44,#ff5f6d); color:#fff;
     box-shadow:0 8px 0 #00000055, 0 10px 20px rgba(255,95,109,0.4);
   }
-  #start button:active { transform:translateY(4px); box-shadow:0 4px 0 #00000055; }
+  #start button#btnStart:active { transform:translateY(4px); box-shadow:0 4px 0 #00000055; }
 </style>
 </head>
 <body>
-<div id="bg"></div>
-<canvas id="gameCanvas"></canvas>
+<div id="game3dContainer"></div>
 <canvas id="fx"></canvas>
 <div id="flash"></div>
 
 <!-- HUD -->
 <div id="hud">
   <div class="hud-row">
-    <div id="lapTimer" title="Tempo da volta atual">⏱️ 00:00.0</div>
-    <div id="bestLapInfo" title="Melhor volta da sessão">⭐ Recorde: --:--.-</div>
+    <div id="lapTimer" title="Tempo da volta atual">ÔÅ▒´©Å 00:00.0</div>
+    <div id="bestLapInfo" title="Melhor volta da sess├úo">Ô¡É Recorde: --:--.-</div>
   </div>
   <div class="hud-subrow">
-    <span id="lapCounter">🏁 Voltas: 0</span>
+    <span id="lapCounter">­ƒÅü Voltas: 0</span>
     <span id="speedGauge">0 km/h</span>
+    <span id="multiplayerTag">ÔÅ▒´©Å Tomada de Tempo</span>
   </div>
-  <div id="turboMeterWrapper" title="Carga do Turbo (Espaço / ▲ / Botão)">
+  <div id="turboMeterWrapper" title="Carga do Turbo (Espa├ºo / Ôû▓ / Bot├úo)">
     <div id="turboMeterFill"></div>
   </div>
 </div>
 
-<!-- Banner de Notificação de Volta / Recorde -->
+<!-- Banner de Notifica├º├úo de Volta / Recorde -->
 <div id="lapBanner"></div>
 
 <!-- Ferramentas -->
 <div id="tools">
-  <a href="../../index.html" title="Voltar para o menu">← Jogos</a>
+  <a href="../../index.html" title="Voltar para o menu">ÔåÉ Jogos</a>
   <select id="selSpeed" title="Velocidade da corrida">
-    <option value="0.30">🐢 30% (Super Calmo)</option>
-    <option value="0.55" selected>🚀 55% (Padrão Infantil)</option>
-    <option value="0.80">⚡ 80% (Rápido)</option>
-    <option value="1.00">🏎️ 100% (Rock n' Roll)</option>
+    <option value="0.30">­ƒÉó 30% (Super Calmo)</option>
+    <option value="0.55" selected>­ƒÜÇ 55% (Padr├úo Infantil)</option>
+    <option value="0.80">ÔÜí 80% (R├ípido)</option>
+    <option value="1.00">­ƒÅÄ´©Å 100% (Rock n' Roll)</option>
   </select>
-  <button id="btnFull" title="Tela cheia">⛶ Tela cheia</button>
-  <button id="btnTrava" title="Bloqueia teclas do sistema">🔓 Travar teclado</button>
-  <button id="btnSound" title="Ligar/Desligar som e música">🔊 Som: ligado</button>
+  <button id="btnFull" title="Tela cheia">ÔøÂ Tela cheia</button>
+  <button id="btnTrava" title="Bloqueia teclas do sistema">­ƒöô Travar teclado</button>
+  <button id="btnSound" title="Ligar/Desligar som e m├║sica">­ƒöè Som: ligado</button>
 </div>
 
 <!-- Controles Touch na Tela -->
 <div id="touchControls">
   <div class="touch-group">
-    <button class="touch-btn" id="btnLeft" title="Virar à esquerda">
-      <span>◀</span>
+    <button class="touch-btn" id="btnLeft" title="Virar ├á esquerda">
+      <span>ÔùÇ</span>
       <span class="btn-label">ESQ</span>
     </button>
-    <button class="touch-btn" id="btnRight" title="Virar à direita">
-      <span>▶</span>
+    <button class="touch-btn" id="btnRight" title="Virar ├á direita">
+      <span>ÔûÂ</span>
       <span class="btn-label">DIR</span>
     </button>
   </div>
   <div class="touch-group">
     <button class="touch-btn touch-btn-turbo" id="btnTurbo" title="Ativar Turbo">
-      <span>🚀</span>
+      <span>­ƒÜÇ</span>
       <span class="btn-label">TURBO</span>
     </button>
   </div>
 </div>
 
-<!-- Modal de Início -->
+<!-- Modal de In├¡cio e Sele├º├úo -->
 <div id="start">
-  <h1>Corrida Rock <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v2.2.0</span></h1>
-  <p>Pise fundo na pista espaçosa com o poder do Rock n' Roll e dispute com seu próprio fantasma! 🏎️🎸</p>
-  
-  <div class="tip-box">
-    <b>💡 Dicas Especiais para os Pequenos Pilotos:</b><br>
-    • <b>Amortecedores Realistas:</b> O chassi agora se inclina e comprime a suspensão nas curvas, além de empinar com o turbo!<br>
-    • <b>Flecha Vetor de Força:</b> Ao virar, uma flecha luminosa com penas surge ao lado do carrinho mostrando para onde a força está empurrando!<br>
-    • <b>Fantasma da Melhor Volta (👻):</b> A cada volta completada, o carrinho fantasma translúcido refaz sua volta mais rápida para você tentar superar seu recorde!
+  <h1>Corrida Rock 3D <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v2.0.0 3D</span></h1>
+  <p>Pise fundo com gr├íficos 3D modernos, amortecedores din├ómicos e modo multiplayer online via Firebase da Google! ­ƒÅÄ´©Å­ƒÄ©</p>
+
+  <div class="mode-selector">
+    <div class="mode-card selected" id="modeSolo">
+      <h3>ÔÅ▒´©Å Tomada de Tempo</h3>
+      <p>Corra contra o rel├│gio e dispute com seu pr├│prio carrinho fantasma!</p>
+    </div>
+    <div class="mode-card" id="modeMulti">
+      <h3>­ƒæÑ Multiplayer Online</h3>
+      <p>Corra ao vivo com amigos pelo Firebase ou dispute com bots IA!</p>
+    </div>
   </div>
 
-  <p style="font-size:min(2vh,3.2vw); opacity:0.75;">
-    🕹️ <b>Teclado:</b> Setas ◄ e ► (ou A e D) para virar &nbsp;•&nbsp; <b>Espaço</b> ou ▲ para TURBO!<br>
-    📱 <b>No celular:</b> Use os botões ◀, ▶ e 🚀 TURBO na parte inferior.
+  <div class="multiplayer-inputs" id="multiInputs">
+    <label>C├│digo da Sala de Corrida:</label>
+    <input type="text" id="inputRoom" value="ROCK" maxlength="8" placeholder="Ex: ROCK">
+    <label>Seu Nome de Piloto:</label>
+    <input type="text" id="inputPilot" value="Super Piloto" maxlength="15">
+  </div>
+  
+  <div class="tip-box">
+    <b>­ƒÆí Tecnologias e Dicas:</b><br>
+    ÔÇó <b>Gr├íficos 3D Real (Three.js):</b> Pista extrudada, sombras, sem├íforo e ilumina├º├úo din├ómica.<br>
+    ÔÇó <b>Amortecedores Realistas:</b> O chassi se inclina nas curvas comprimindo as molas e empina com o turbo!<br>
+    ÔÇó <b>Flecha Vetor For├ºa:</b> Continua ativa para orientar as crian├ºas de qualquer ├óngulo.
+  </div>
+
+  <p style="font-size:min(1.9vh,3vw); opacity:0.75;">
+    ­ƒò╣´©Å <b>Teclado:</b> Setas Ôùä e Ôû║ (ou A e D) para virar &nbsp;ÔÇó&nbsp; <b>Espa├ºo</b> ou Ôû▓ para TURBO!<br>
+    ­ƒô▒ <b>No celular:</b> Use os bot├Áes ÔùÇ, ÔûÂ e ­ƒÜÇ TURBO na parte inferior.
   </p>
   <button id="btnStart">Ligar os Motores!</button>
 </div>
 
-<!-- Scripts compartilhados -->
-<script src="../../lib/base.js?v=9"></script>
-<script src="../../lib/audio.js?v=9"></script>
-<script src="../../lib/particulas.js?v=9"></script>
-<script src="../../lib/trava.js?v=9"></script>
+<!-- Three.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- Firebase App e Database CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Scripts do Jogo -->
+<script src="../../lib/base.js?v=10"></script>
+<script src="../../lib/audio.js?v=10"></script>
+<script src="../../lib/particulas.js?v=10"></script>
+<script src="../../lib/trava.js?v=10"></script>
+<script src="firebase-config.js?v=1"></script>
+<script src="game3d.js?v=1"></script>
 
 <script>
 /* ============================================================================
-   CORRIDA ROCK — PISTA QUADRADA COM VETOR FORÇA LATERAL
+   L├ôGICA PRINCIPAL INTEGRADA: F├ìSICA + THREE.JS 3D + MULTIPLAYER
    ========================================================================== */
-const gcv = $("gameCanvas"), gctx = gcv.getContext("2d");
 let started = false;
 let soundOn = true;
-let gameSpeed = 0.55; // Padrão infantil calmo
+let gameSpeed = 0.55;
+let selectedMode = "solo"; // "solo" ou "multi"
 
-/* Configuração do tamanho do Canvas */
-function resizeGame(){
-  gcv.width = innerWidth * devicePixelRatio;
-  gcv.height = innerHeight * devicePixelRatio;
-  gcv.style.width = innerWidth + "px";
-  gcv.style.height = innerHeight + "px";
-  gctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-}
-addEventListener("resize", resizeGame);
-resizeGame();
+// Inicializa a Engine 3D Three.js
+const container3D = $("game3dContainer");
+const game3D = new Game3D(container3D);
+
+/* Configura├º├úo do seletor de modo Solo vs Multiplayer */
+$("modeSolo").addEventListener("click", () => {
+  selectedMode = "solo";
+  $("modeSolo").classList.add("selected");
+  $("modeMulti").classList.remove("selected");
+  $("multiInputs").classList.remove("show");
+  $("multiplayerTag").textContent = "ÔÅ▒´©Å Tomada de Tempo";
+});
+
+$("modeMulti").addEventListener("click", () => {
+  selectedMode = "multi";
+  $("modeMulti").classList.add("selected");
+  $("modeSolo").classList.remove("selected");
+  $("multiInputs").classList.add("show");
+  $("multiplayerTag").textContent = "­ƒæÑ Sala: " + ($("inputRoom").value || "ROCK");
+});
 
 /* ============================================================================
-   ÁUDIO RETRÔ ROCK N' ROLL (SINTETIZADOR WEB AUDIO API)
+   ├üUDIO RETR├ö ROCK N' ROLL (SINTETIZADOR WEB AUDIO API)
    ========================================================================== */
 let musicBeat = 0;
 let musicTimer = null;
@@ -274,7 +336,6 @@ function playRockBeat(){
     const c = ac();
     const freq = rockBassNotes[musicBeat % rockBassNotes.length];
     
-    // Baixo Rock n' Roll com distorção quente
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.type = "sawtooth";
@@ -284,9 +345,7 @@ function playRockBeat(){
     osc.connect(gain); gain.connect(c.destination);
     osc.start(); osc.stop(c.currentTime + 0.24);
 
-    // Bumbo & Caixa (Kick & Snare)
     if(musicBeat % 2 === 0){
-      // Kick bumbo
       const kick = c.createOscillator();
       const kGain = c.createGain();
       kick.type = "sine";
@@ -297,7 +356,6 @@ function playRockBeat(){
       kick.connect(kGain); kGain.connect(c.destination);
       kick.start(); kick.stop(c.currentTime + 0.15);
     } else {
-      // Snare caixa
       tone(220, 0.08, "triangle", 0.05, 90);
     }
 
@@ -326,196 +384,34 @@ function sLapFanfare(){
 }
 
 /* ============================================================================
-   DEFINIÇÃO DA PISTA QUADRADA CLÁSSICA
-   ========================================================================== */
-function getTrackDimensions(){
-  const w = innerWidth, h = innerHeight;
-  // Margens dinâmicas super compactas para liberar área máxima para a pista
-  const marginX = Math.max(10, w * 0.025);
-  const marginY = Math.max(36, h * 0.055);
-  const trackW = w - marginX * 2;
-  const trackH = h - marginY * 2;
-  
-  // Pista extra larga (largura de pista aumentada para até 240px mantendo miolo jogável)
-  let roadWidth = Math.min(trackW * 0.38, trackH * 0.38, 240);
-  // Mantém a ilha interna do miolo com proporções estéticas e sem fechar totalmente
-  if(trackW - roadWidth * 2 < 70) roadWidth = (trackW - 70) / 2;
-  if(trackH - roadWidth * 2 < 55) roadWidth = (trackH - 55) / 2;
-  roadWidth = Math.max(75, roadWidth);
-
-  const cornerRadius = Math.max(roadWidth * 1.05, 60);
-
-  return {
-    x: marginX,
-    y: marginY,
-    w: trackW,
-    h: trackH,
-    roadWidth: roadWidth,
-    radius: cornerRadius,
-    innerX: marginX + roadWidth,
-    innerY: marginY + roadWidth,
-    innerW: trackW - roadWidth * 2,
-    innerH: trackH - roadWidth * 2
-  };
-}
-
-/* Desenho da Pista Quadrada com Zebras e Linha de Chegada */
-function drawTrack(t){
-  gctx.save();
-  
-  // 1. Asfalto da pista com borda externa com textura moderna de corrida
-  // Asfalto base granulado escuro
-  const asphaltGrad = gctx.createLinearGradient(t.x, t.y, t.x + t.w, t.y + t.h);
-  asphaltGrad.addColorStop(0, "#221f33");
-  asphaltGrad.addColorStop(0.5, "#28243c");
-  asphaltGrad.addColorStop(1, "#1d1a2d");
-  
-  gctx.fillStyle = asphaltGrad;
-  gctx.beginPath();
-  gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
-  gctx.fill();
-
-  // Borda suave de asfalto gasto / borracha aderente
-  gctx.lineWidth = 14;
-  gctx.strokeStyle = "rgba(12, 9, 24, 0.45)";
-  gctx.beginPath();
-  gctx.roundRect(t.x + 7, t.y + 7, t.w - 14, t.h - 14, Math.max(10, t.radius - 7));
-  gctx.stroke();
-
-  // Ilha interna (grama/terra do miolo com relevo sombreado)
-  gctx.shadowColor = "rgba(0,0,0,0.7)";
-  gctx.shadowBlur = 16;
-  gctx.fillStyle = "#100d20";
-  gctx.beginPath();
-  gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
-  gctx.fill();
-  gctx.shadowBlur = 0;
-
-  // 2. Zebras coloridas (curbs 3D chanfradas) nas bordas
-  drawCurbs(t);
-
-  // 3. Linha tracejada guia no centro da pista
-  drawCenterLine(t);
-
-  // 4. Linha de Chegada Quadriculada (Finish Line) na reta superior
-  drawFinishLine(t);
-
-  gctx.restore();
-}
-
-/* Zebras vermelhas e brancas nas bordas com relevo 3D */
-function drawCurbs(t){
-  gctx.save();
-  gctx.lineWidth = 8;
-  gctx.lineCap = "butt";
-  
-  // Borda Externa - Base branca e faixas vermelhas chanfradas
-  gctx.strokeStyle = "#ffffff";
-  gctx.beginPath();
-  gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
-  gctx.stroke();
-
-  gctx.strokeStyle = "#ff4757";
-  gctx.setLineDash([16, 16]);
-  gctx.beginPath();
-  gctx.roundRect(t.x, t.y, t.w, t.h, t.radius);
-  gctx.stroke();
-
-  // Borda Interna
-  gctx.setLineDash([]);
-  gctx.strokeStyle = "#ffffff";
-  gctx.beginPath();
-  gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
-  gctx.stroke();
-
-  gctx.strokeStyle = "#ff4757";
-  gctx.setLineDash([14, 14]);
-  gctx.beginPath();
-  gctx.roundRect(t.innerX, t.innerY, t.innerW, t.innerH, Math.max(10, t.radius - t.roadWidth));
-  gctx.stroke();
-
-  gctx.restore();
-}
-
-/* Linha guia central da pista */
-function drawCenterLine(t){
-  const midX = t.x + t.roadWidth / 2;
-  const midY = t.y + t.roadWidth / 2;
-  const midW = t.w - t.roadWidth;
-  const midH = t.h - t.roadWidth;
-  const midR = Math.max(8, t.radius - t.roadWidth / 2);
-
-  gctx.save();
-  gctx.strokeStyle = "rgba(255, 210, 63, 0.35)";
-  gctx.lineWidth = 3;
-  gctx.setLineDash([12, 16]);
-  gctx.beginPath();
-  gctx.roundRect(midX, midY, midW, midH, midR);
-  gctx.stroke();
-  gctx.restore();
-}
-
-/* Linha de Chegada Quadriculada na reta superior */
-function drawFinishLine(t){
-  const lineX = t.x + t.w * 0.48;
-  const lineY1 = t.y;
-  const lineY2 = t.y + t.roadWidth;
-  const sqSize = 10;
-  const numRows = Math.ceil(t.roadWidth / sqSize);
-
-  gctx.save();
-  for(let r = 0; r < numRows; r++){
-    for(let c = 0; c < 2; c++){
-      gctx.fillStyle = (r + c) % 2 === 0 ? "#ffffff" : "#1a162b";
-      gctx.fillRect(lineX + c * sqSize, lineY1 + r * sqSize, sqSize, sqSize);
-    }
-  }
-  // Pórtico de Largada / Chegada
-  gctx.fillStyle = "#ffd23f";
-  gctx.font = '900 13px "Baloo 2", sans-serif';
-  gctx.textAlign = "center";
-  gctx.fillText("🏁 LARGADA / CHEGADA", lineX + sqSize, lineY1 - 8);
-  gctx.restore();
-}
-
-/* ============================================================================
-   ESTADO DO CARRINHO DE CORRIDA & FÍSICA
+   ESTADO DO CARRINHO DE CORRIDA & F├ìSICA
    ========================================================================== */
 const car = {
   x: 0,
-  y: 0,
-  angle: 0, // 0 = apontando para a direita
+  z: -185,
+  angle: 0, // 0 = apontando para a direita no eixo X
   speed: 0,
   baseSpeed: 5.5,
-  maxSpeed: 5.5,
   turnSpeed: 0.052,
-  drift: 0,
   width: 38,
   length: 54,
-  color: "#ff5f6d",
-  // Sistema de Amortecedores / Suspensão Dinâmica
-  roll: 0,        // Compressão lateral/inclinação nas curvas (-1 a 1)
-  pitch: 0,       // Empinamento com aceleração/turbo (-1 a 1)
-  steerAngle: 0,  // Ângulo visual das rodas dianteiras
-  suspensionOffsets: { fl: 0, fr: 0, rl: 0, rr: 0 },
-  // Vetor Força Lateral
+  color: "#ff4757",
+  // Suspens├úo / Amortecedores 3D
+  roll: 0,
+  pitch: 0,
+  steerAngle: 0,
+  // Vetor For├ºa Lateral
   vectorLeftActive: false,
   vectorRightActive: false,
-  vectorIntensity: 0,
   // Turbo
   turboActive: false,
   turboTimer: 0,
-  turboMaxTimer: 90, // ~1.5s
-  turboCharge: 1.0,  // 0 a 1
+  turboMaxTimer: 90,
+  turboCharge: 1.0,
   bounceTimer: 0
 };
 
-/* Marcas de pneu na pista */
-let skidMarks = [];
-
-/* ============================================================================
-   SISTEMA DE CRONÔMETRO, RECORDES E CARRINHO FANTASMA
-   ========================================================================== */
+/* Sistema de Voltas e Cron├┤metro */
 let lapStartTime = 0;
 let totalLapsCompleted = 0;
 let bestLapTime = null;
@@ -523,7 +419,7 @@ let currentLapFrames = [];
 let bestGhostFrames = null;
 let bestGhostDuration = 0;
 let prevCarX = 0;
-const checkpoints = [false, false, false, false]; // Top-right, Bottom-right, Bottom-left, Top-left
+const checkpoints = [false, false, false, false];
 
 function formatTime(ms){
   if(!ms || ms <= 0 || ms === Infinity) return "--:--.-";
@@ -537,7 +433,7 @@ function formatTime(ms){
 function formatTimeSpeech(ms){
   const totalSec = ms / 1000;
   if(totalSec < 60){
-    return totalSec.toFixed(1).replace(".", " vírgula ") + " segundos";
+    return totalSec.toFixed(1).replace(".", " v├¡rgula ") + " segundos";
   }
   const mins = Math.floor(totalSec / 60);
   const secs = Math.floor(totalSec % 60);
@@ -551,485 +447,12 @@ function showLapBanner(text, isRecord = false){
   b.textContent = text;
   b.className = "show" + (isRecord ? " is-record" : "");
   if(lapBannerTimer) clearTimeout(lapBannerTimer);
-  lapBannerTimer = setTimeout(() => {
-    b.className = "";
-  }, 3200);
+  lapBannerTimer = setTimeout(() => { b.className = ""; }, 3200);
 }
-
-function initCarPosition(){
-  const t = getTrackDimensions();
-  car.x = t.x + t.w * 0.38;
-  car.y = t.y + t.roadWidth * 0.5;
-  car.angle = 0; // Apontando para a direita na reta superior
-  car.speed = 0;
-}
-initCarPosition();
 
 /* Teclas ativas */
 const keysPressed = {};
 
-/* ============================================================================
-   DESENHO DO CARRINHO & DO VETOR FORÇA LATERAL
-   ========================================================================== */
-function drawCar(){
-  gctx.save();
-  gctx.translate(car.x, car.y);
-  gctx.rotate(car.angle);
-
-  // 1. Sombra projetada do carro no asfalto com visual dinâmico
-  gctx.save();
-  gctx.fillStyle = "rgba(10, 8, 20, 0.48)";
-  gctx.beginPath();
-  // Sombra desloca levemente oposta à inclinação
-  gctx.roundRect(-car.length * 0.44 + 4, -car.width * 0.48 + 4 + car.roll * 2, car.length, car.width * 0.96, 10);
-  gctx.fill();
-  gctx.restore();
-
-  // 2. O VETOR FORÇA LATERAL (O grande diferencial pedagógico!)
-  if(car.vectorLeftActive || car.vectorRightActive){
-    drawForceVector();
-  }
-
-  // 3. Chamas do Turbo nos escapamentos
-  if(car.turboActive){
-    drawTurboFlames();
-  }
-
-  // 4. Rodas com suspensão, amortecedores visíveis e pneus esportivos
-  const wheelW = 12, wheelL = 18;
-  const flX = car.length * 0.22, flY = -car.width * 0.55;
-  const frX = car.length * 0.22, frY = car.width * 0.55 - wheelW;
-  const rlX = -car.length * 0.42, rlY = -car.width * 0.55;
-  const rrX = -car.length * 0.42, rrY = car.width * 0.55 - wheelW;
-
-  // Braços de suspensão e molas esportivas nos 4 cantos
-  function drawSuspensionArm(wx, wy, isFront, isLeft){
-    gctx.save();
-    gctx.lineWidth = 3.5;
-    gctx.strokeStyle = "#4b4668";
-    const bodyAnchorY = isLeft ? -car.width * 0.32 : car.width * 0.32;
-    gctx.beginPath();
-    gctx.moveTo(wx + wheelL * 0.5, bodyAnchorY);
-    gctx.lineTo(wx + wheelL * 0.5, wy + (isLeft ? wheelW : 0));
-    gctx.stroke();
-
-    // Mola helicoidal amortecedora (espiral vermelha/amarela esportiva)
-    gctx.lineWidth = 2;
-    gctx.strokeStyle = isFront ? "#ffd23f" : "#ff4757";
-    const springMidY = (bodyAnchorY + wy + (isLeft ? wheelW : 0)) * 0.5;
-    gctx.beginPath();
-    gctx.moveTo(wx + wheelL * 0.3, springMidY - 3);
-    gctx.lineTo(wx + wheelL * 0.7, springMidY);
-    gctx.lineTo(wx + wheelL * 0.3, springMidY + 3);
-    gctx.stroke();
-    gctx.restore();
-  }
-  drawSuspensionArm(flX, flY, true, true);
-  drawSuspensionArm(frX, frY, true, false);
-  drawSuspensionArm(rlX, rlY, false, true);
-  drawSuspensionArm(rrX, rrY, false, false);
-
-  // Rodas dianteiras com esterçamento dinâmico
-  function drawWheel(wx, wy, steer, isLeft){
-    gctx.save();
-    gctx.translate(wx + wheelL * 0.5, wy + wheelW * 0.5);
-    if(steer) gctx.rotate(steer);
-    // Pneu de borracha vulcanizada
-    gctx.fillStyle = "#120f20";
-    gctx.beginPath();
-    gctx.roundRect(-wheelL * 0.5, -wheelW * 0.5, wheelL, wheelW, 4);
-    gctx.fill();
-    // Calota / Roda de liga leve dourada/prata
-    gctx.fillStyle = "#7b7495";
-    gctx.fillRect(-wheelL * 0.25, -wheelW * 0.25, wheelL * 0.5, wheelW * 0.5);
-    gctx.fillStyle = "#ffdd53";
-    gctx.beginPath();
-    gctx.arc(0, 0, 2.5, 0, Math.PI * 2);
-    gctx.fill();
-    gctx.restore();
-  }
-  drawWheel(flX, flY, car.steerAngle, true);
-  drawWheel(frX, frY, car.steerAngle, false);
-  drawWheel(rlX, rlY, 0, true);
-  drawWheel(rrX, rrY, 0, false);
-
-  // 5. Chassi do Carrinho com inclinação do amortecedor (Roll & Pitch lateral)
-  gctx.save();
-  // Translação lateral do chassi provocada pela compressão da mola
-  const bodyRollOffset = car.roll * 4.2;
-  const bodyPitchOffset = car.pitch * 2.5;
-  gctx.translate(bodyPitchOffset, bodyRollOffset);
-  // Escala assimétrica simulando visão em perspectiva da carroceria inclinando
-  const scaleY = 1.0 + Math.abs(car.roll) * 0.08;
-  gctx.scale(1.0, scaleY);
-
-  // Chassi base com gradiente moderno de pintura metálica
-  const bodyGrad = gctx.createLinearGradient(-car.length * 0.45, -car.width * 0.42, -car.length * 0.45, car.width * 0.42);
-  bodyGrad.addColorStop(0, "#ff758c");
-  bodyGrad.addColorStop(0.35, car.color);
-  bodyGrad.addColorStop(0.7, "#d63031");
-  bodyGrad.addColorStop(1, "#9e1515");
-
-  gctx.fillStyle = bodyGrad;
-  gctx.strokeStyle = "#ffffff";
-  gctx.lineWidth = 2.5;
-  gctx.shadowColor = "rgba(0,0,0,0.4)";
-  gctx.shadowBlur = 8;
-  gctx.beginPath();
-  gctx.roundRect(-car.length * 0.45, -car.width * 0.42, car.length, car.width * 0.84, 9);
-  gctx.fill();
-  gctx.stroke();
-  gctx.shadowBlur = 0;
-
-  // Supercharger / Blower no capo estilo Rock n Roll Racing
-  gctx.fillStyle = "#dfe4ea";
-  gctx.fillRect(car.length * 0.16, -car.width * 0.16, 12, car.width * 0.32);
-  gctx.fillStyle = "#2f3542";
-  gctx.fillRect(car.length * 0.25, -car.width * 0.10, 3, car.width * 0.20);
-
-  // Escapamentos laterais cromados
-  gctx.fillStyle = "#ced6e0";
-  gctx.fillRect(-car.length * 0.35, -car.width * 0.46, 22, 3);
-  gctx.fillRect(-car.length * 0.35, car.width * 0.42, 22, 3);
-
-  // Faixa de corrida central com brilho
-  const stripeGrad = gctx.createLinearGradient(0, -car.width * 0.12, 0, car.width * 0.12);
-  stripeGrad.addColorStop(0, "#fff275");
-  stripeGrad.addColorStop(0.5, "#ffd23f");
-  stripeGrad.addColorStop(1, "#f39c12");
-  gctx.fillStyle = stripeGrad;
-  gctx.fillRect(-car.length * 0.45, -car.width * 0.12, car.length, car.width * 0.24);
-
-  // Para-brisa dianteiro e vidro traseiro escurecido com reflexo azul celeste
-  gctx.fillStyle = "#18142c";
-  gctx.beginPath();
-  gctx.roundRect(car.length * 0.05, -car.width * 0.32, car.length * 0.22, car.width * 0.64, 4);
-  gctx.fill();
-  // Reflexo diagonal do vidro
-  gctx.strokeStyle = "rgba(126, 232, 250, 0.65)";
-  gctx.lineWidth = 2;
-  gctx.beginPath();
-  gctx.moveTo(car.length * 0.08, -car.width * 0.22);
-  gctx.lineTo(car.length * 0.22, car.width * 0.18);
-  gctx.stroke();
-
-  // Vidro traseiro
-  gctx.fillStyle = "#18142c";
-  gctx.beginPath();
-  gctx.roundRect(-car.length * 0.32, -car.width * 0.28, car.length * 0.14, car.width * 0.56, 3);
-  gctx.fill();
-
-  // Faróis dianteiros brilhantes com xenônio moderno
-  gctx.fillStyle = "#ffffff";
-  gctx.shadowColor = "#7ee8fa";
-  gctx.shadowBlur = 10;
-  gctx.fillRect(car.length * 0.48, -car.width * 0.35, 4, 8);
-  gctx.fillRect(car.length * 0.48, car.width * 0.35 - 8, 4, 8);
-  gctx.shadowBlur = 0;
-
-  // Lanternas traseiras de freio neon
-  gctx.fillStyle = "#ff2244";
-  gctx.shadowColor = "#ff2244";
-  gctx.shadowBlur = 6;
-  gctx.fillRect(-car.length * 0.46, -car.width * 0.36, 3, 7);
-  gctx.fillRect(-car.length * 0.46, car.width * 0.36 - 7, 3, 7);
-  gctx.shadowBlur = 0;
-
-  // Aerofólio esportivo traseiro (Spoiler)
-  gctx.fillStyle = "#262338";
-  gctx.strokeStyle = "#ffd23f";
-  gctx.lineWidth = 1.5;
-  gctx.beginPath();
-  gctx.roundRect(-car.length * 0.49, -car.width * 0.42, 5, car.width * 0.84, 2);
-  gctx.fill();
-  gctx.stroke();
-
-  // Número do carro em relevo
-  gctx.fillStyle = "#ffffff";
-  gctx.font = '900 13px "Baloo 2", sans-serif';
-  gctx.textAlign = "center";
-  gctx.textBaseline = "middle";
-  gctx.shadowColor = "rgba(0,0,0,0.6)";
-  gctx.shadowBlur = 4;
-  gctx.fillText("1", -car.length * 0.1, 1);
-  gctx.shadowBlur = 0;
-
-  gctx.restore(); // Fecha restauração do Chassi (Roll & Pitch)
-
-  gctx.restore(); // Fecha restauração do Carro
-}
-
-/* O VETOR FORÇA LATERAL — Desenhado como uma Flecha estilizada com ponta e penas */
-let vectorAnimFrame = 0;
-
-function drawForceVector(){
-  const isLeft = car.vectorLeftActive;
-  const sideY = isLeft ? -car.width * 0.52 : car.width * 0.52;
-  const dir = isLeft ? -1 : 1;
-  const arrowLength = 54;
-  const arrowColor = isLeft ? "#7ee8fa" : "#ffd23f";
-  const glowColor = isLeft ? "#48cae4" : "#ff9a44";
-
-  vectorAnimFrame++;
-
-  gctx.save();
-  gctx.translate(0, sideY);
-
-  gctx.strokeStyle = arrowColor;
-  gctx.fillStyle = arrowColor;
-  gctx.shadowColor = glowColor;
-  gctx.shadowBlur = 12;
-
-  // 1. Haste da Flecha
-  gctx.lineWidth = 4.5;
-  gctx.lineCap = "round";
-  gctx.beginPath();
-  gctx.moveTo(0, 0);
-  gctx.lineTo(0, dir * arrowLength);
-  gctx.stroke();
-
-  // 2. Ponta Afiada da Flecha (Arrowhead com barbelas)
-  const tipY = dir * (arrowLength + 16);
-  const barbY = dir * arrowLength;
-  const barbX = 12;
-  gctx.beginPath();
-  gctx.moveTo(0, tipY);
-  gctx.lineTo(-barbX, barbY);
-  gctx.lineTo(-barbX * 0.4, barbY + dir * 2);
-  gctx.lineTo(0, barbY - dir * 2);
-  gctx.lineTo(barbX * 0.4, barbY + dir * 2);
-  gctx.lineTo(barbX, barbY);
-  gctx.closePath();
-  gctx.fill();
-
-  // 3. Penas de Flecha na base (Fletching clássico de arco e flecha)
-  gctx.lineWidth = 2.5;
-  const fletch1 = dir * 6;
-  const fletch2 = dir * 15;
-  const fletch3 = dir * 23;
-  const fletchW = 8;
-  gctx.beginPath();
-  // Primeiro par de penas
-  gctx.moveTo(0, fletch1);
-  gctx.lineTo(-fletchW, fletch2);
-  gctx.moveTo(0, fletch1);
-  gctx.lineTo(fletchW, fletch2);
-  // Segundo par de penas
-  gctx.moveTo(0, fletch2);
-  gctx.lineTo(-fletchW, fletch3);
-  gctx.moveTo(0, fletch2);
-  gctx.lineTo(fletchW, fletch3);
-  gctx.stroke();
-
-  // 4. Chevrons dinâmicos pulsando na haste (efeito de vetor força)
-  const pulseOffset = (vectorAnimFrame % 20) / 20;
-  const chevY = dir * (16 + pulseOffset * 26);
-  gctx.lineWidth = 3;
-  gctx.beginPath();
-  gctx.moveTo(-5, chevY - dir * 4);
-  gctx.lineTo(0, chevY);
-  gctx.lineTo(5, chevY - dir * 4);
-  gctx.stroke();
-
-  // 5. Rótulo de Direção (ESQUERDA ◀ / DIREITA ▶)
-  gctx.save();
-  gctx.translate(0, tipY + dir * 18);
-  gctx.rotate(isLeft ? Math.PI / 2 : -Math.PI / 2);
-  gctx.fillStyle = "#ffffff";
-  gctx.font = '900 13px "Baloo 2", sans-serif';
-  gctx.textAlign = "center";
-  gctx.textBaseline = "middle";
-  gctx.shadowColor = glowColor;
-  gctx.shadowBlur = 6;
-  gctx.fillText(isLeft ? "◄ ESQUERDA" : "DIREITA ►", 0, 0);
-  gctx.restore();
-
-  gctx.restore();
-}
-
-/* Chamas do Turbo nos escapamentos */
-function drawTurboFlames(){
-  gctx.save();
-  const flameL = 22 + Math.random() * 12;
-  const flameW = 6;
-  gctx.fillStyle = pick(["#7ee8fa", "#ff9a44", "#ffd23f", "#ffffff"]);
-  gctx.shadowColor = "#ff5f6d";
-  gctx.shadowBlur = 10;
-
-  // Escapamento esquerdo e direito
-  [-car.width * 0.3, car.width * 0.3].forEach(y => {
-    gctx.beginPath();
-    gctx.moveTo(-car.length * 0.45, y - flameW/2);
-    gctx.lineTo(-car.length * 0.45 - flameL, y);
-    gctx.lineTo(-car.length * 0.45, y + flameW/2);
-    gctx.closePath();
-    gctx.fill();
-  });
-  gctx.restore();
-}
-
-/* ============================================================================
-   CARRINHO FANTASMA — POSICIONAMENTO E RENDERIZAÇÃO
-   ========================================================================== */
-function getGhostPose(elapsed){
-  if(!bestGhostFrames || bestGhostFrames.length === 0) return null;
-  if(elapsed >= bestGhostDuration) return null; // Já cruzou a linha de chegada
-
-  const t = getTrackDimensions();
-  let low = 0, high = bestGhostFrames.length - 1;
-  while(low <= high){
-    const mid = (low + high) >> 1;
-    if(bestGhostFrames[mid].t < elapsed) low = mid + 1;
-    else high = mid - 1;
-  }
-  const i = Math.max(0, Math.min(bestGhostFrames.length - 1, low));
-  if(i === 0){
-    const f = bestGhostFrames[0];
-    return {
-      x: t.x + f.nx * t.w,
-      y: t.y + f.ny * t.h,
-      angle: f.angle,
-      turbo: f.turbo,
-      roll: f.roll || 0,
-      pitch: f.pitch || 0,
-      steerAngle: f.steerAngle || 0
-    };
-  }
-
-  const f0 = bestGhostFrames[i - 1];
-  const f1 = bestGhostFrames[i];
-  const span = f1.t - f0.t;
-  const factor = span > 0 ? Math.max(0, Math.min(1, (elapsed - f0.t) / span)) : 0;
-
-  // Interpolação angular contínua
-  let dAngle = f1.angle - f0.angle;
-  while(dAngle > Math.PI) dAngle -= Math.PI * 2;
-  while(dAngle < -Math.PI) dAngle += Math.PI * 2;
-
-  const nx = f0.nx + (f1.nx - f0.nx) * factor;
-  const ny = f0.ny + (f1.ny - f0.ny) * factor;
-  const roll = (f0.roll || 0) + ((f1.roll || 0) - (f0.roll || 0)) * factor;
-  const pitch = (f0.pitch || 0) + ((f1.pitch || 0) - (f0.pitch || 0)) * factor;
-  const steerAngle = (f0.steerAngle || 0) + ((f1.steerAngle || 0) - (f0.steerAngle || 0)) * factor;
-
-  return {
-    x: t.x + nx * t.w,
-    y: t.y + ny * t.h,
-    angle: f0.angle + dAngle * factor,
-    turbo: f0.turbo,
-    roll,
-    pitch,
-    steerAngle
-  };
-}
-
-function drawGhostCar(pose){
-  if(!pose) return;
-
-  gctx.save();
-  gctx.translate(pose.x, pose.y);
-  gctx.rotate(pose.angle);
-  gctx.globalAlpha = 0.55; // Translúcido holográfico
-
-  // 1. Chamas translúcidas do turbo do fantasma
-  if(pose.turbo){
-    gctx.save();
-    const flameL = 20 + Math.random() * 8;
-    gctx.fillStyle = "#7ee8fa";
-    gctx.shadowColor = "#7ee8fa";
-    gctx.shadowBlur = 12;
-    [-car.width * 0.3, car.width * 0.3].forEach(y => {
-      gctx.beginPath();
-      gctx.moveTo(-car.length * 0.45, y - 3);
-      gctx.lineTo(-car.length * 0.45 - flameL, y);
-      gctx.lineTo(-car.length * 0.45, y + 3);
-      gctx.closePath();
-      gctx.fill();
-    });
-    gctx.restore();
-  }
-
-  // 2. Rodas holográficas com esterçamento
-  const wheelW = 12, wheelL = 16;
-  const flX = car.length * 0.22, flY = -car.width * 0.55;
-  const frX = car.length * 0.22, frY = car.width * 0.55 - wheelW;
-  const rlX = -car.length * 0.42, rlY = -car.width * 0.55;
-  const rrX = -car.length * 0.42, rrY = car.width * 0.55 - wheelW;
-
-  function drawGhostWheel(wx, wy, steer){
-    gctx.save();
-    gctx.translate(wx + wheelL * 0.5, wy + wheelW * 0.5);
-    if(steer) gctx.rotate(steer);
-    gctx.fillStyle = "rgba(18, 32, 58, 0.75)";
-    gctx.beginPath();
-    gctx.roundRect(-wheelL * 0.5, -wheelW * 0.5, wheelL, wheelW, 4);
-    gctx.fill();
-    gctx.restore();
-  }
-  drawGhostWheel(flX, flY, pose.steerAngle);
-  drawGhostWheel(frX, frY, pose.steerAngle);
-  drawGhostWheel(rlX, rlY, 0);
-  drawGhostWheel(rrX, rrY, 0);
-
-  // 3. Chassi translúcido ciano com inclinação dos amortecedores
-  gctx.save();
-  const ghostRollOffset = (pose.roll || 0) * 4.2;
-  const ghostPitchOffset = (pose.pitch || 0) * 2.5;
-  gctx.translate(ghostPitchOffset, ghostRollOffset);
-  const ghostScaleY = 1.0 + Math.abs(pose.roll || 0) * 0.08;
-  gctx.scale(1.0, ghostScaleY);
-
-  gctx.fillStyle = "rgba(72, 202, 228, 0.55)";
-  gctx.strokeStyle = "#ffffff";
-  gctx.lineWidth = 2.2;
-  gctx.shadowColor = "#7ee8fa";
-  gctx.shadowBlur = 15;
-  gctx.beginPath();
-  gctx.roundRect(-car.length * 0.45, -car.width * 0.42, car.length, car.width * 0.84, 8);
-  gctx.fill();
-  gctx.stroke();
-
-  // Faixa de corrida central translúcida
-  gctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-  gctx.fillRect(-car.length * 0.45, -car.width * 0.12, car.length, car.width * 0.24);
-
-  // Para-brisa holográfico
-  gctx.fillStyle = "rgba(14, 25, 48, 0.8)";
-  gctx.beginPath();
-  gctx.roundRect(car.length * 0.05, -car.width * 0.32, car.length * 0.22, car.width * 0.64, 4);
-  gctx.fill();
-
-  // Faróis ciano brilhantes
-  gctx.fillStyle = "#ffffff";
-  gctx.fillRect(car.length * 0.48, -car.width * 0.35, 3, 7);
-  gctx.fillRect(car.length * 0.48, car.width * 0.35 - 7, 3, 7);
-
-  gctx.restore(); // Fecha chassi do fantasma
-
-  gctx.restore(); // Fecha pose do fantasma
-
-  // 4. Tag flutuante "👻 RECORDE" acima do fantasma
-  gctx.save();
-  gctx.translate(pose.x, pose.y - car.width * 0.68 - 12);
-  gctx.fillStyle = "rgba(14, 10, 32, 0.8)";
-  gctx.strokeStyle = "#7ee8fa";
-  gctx.lineWidth = 1.5;
-  gctx.beginPath();
-  gctx.roundRect(-46, -11, 92, 22, 11);
-  gctx.fill();
-  gctx.stroke();
-
-  gctx.fillStyle = "#7ee8fa";
-  gctx.font = '900 11px "Baloo 2", sans-serif';
-  gctx.textAlign = "center";
-  gctx.textBaseline = "middle";
-  gctx.fillText("👻 RECORDE", 0, 1);
-  gctx.restore();
-}
-
-/* ============================================================================
-   LOOP PRINCIPAL DO JOGO (FÍSICA E ATUALIZAÇÃO)
-   ========================================================================== */
 function activateTurbo(){
   if(!started) return;
   if(car.turboCharge >= 0.35 && !car.turboActive){
@@ -1037,90 +460,129 @@ function activateTurbo(){
     car.turboTimer = car.turboMaxTimer;
     car.turboCharge = Math.max(0, car.turboCharge - 0.5);
     sTurbo();
-    // Confete suave no impulso
-    sprinkle(car.x, car.y, "#ffd23f");
+    sprinkle(window.innerWidth / 2, window.innerHeight / 2, "#ffd23f");
   }
 }
 
-/* Calcula o ponto mais próximo na faixa central da pista e o ângulo tangente horário */
-function getTrackCenterPoint(px, py, t){
-  const midX = t.x + t.roadWidth / 2;
-  const midY = t.y + t.roadWidth / 2;
+/* ============================================================================
+   GEOMETRIA E LINHA M├ëDIA DO CIRCUITO 3D
+   ========================================================================== */
+function getTrack3DPoint(px, pz){
+  const t = game3D.trackDimensions;
+  const halfW = t.w / 2;
+  const halfH = t.h / 2;
+  const midR = t.r - t.roadWidth / 2;
   const midW = t.w - t.roadWidth;
   const midH = t.h - t.roadWidth;
-  const midR = Math.max(12, t.radius - t.roadWidth / 2);
 
-  const left = midX + midR;
-  const right = midX + midW - midR;
-  const top = midY + midR;
-  const bottom = midY + midH - midR;
+  const left = -halfW + t.roadWidth / 2 + midR;
+  const right = halfW - t.roadWidth / 2 - midR;
+  const top = -halfH + t.roadWidth / 2 + midR;
+  const bottom = halfH - t.roadWidth / 2 - midR;
 
   let cx = px;
-  let cy = py;
+  let cz = pz;
   let forwardAngle = 0;
 
   // 1. Quatro cantos arredondados
-  if(px < left && py < top){
-    // Canto Superior Esquerdo
-    const ang = Math.atan2(py - top, px - left);
+  if(px < left && pz < top){
+    const ang = Math.atan2(pz - top, px - left);
     cx = left + midR * Math.cos(ang);
-    cy = top + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2; // curva horária
-  } else if(px > right && py < top){
-    // Canto Superior Direito
-    const ang = Math.atan2(py - top, px - right);
+    cz = top + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2;
+  } else if(px > right && pz < top){
+    const ang = Math.atan2(pz - top, px - right);
     cx = right + midR * Math.cos(ang);
-    cy = top + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2; // curva horária
-  } else if(px > right && py > bottom){
-    // Canto Inferior Direito
-    const ang = Math.atan2(py - bottom, px - right);
+    cz = top + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2;
+  } else if(px > right && pz > bottom){
+    const ang = Math.atan2(pz - bottom, px - right);
     cx = right + midR * Math.cos(ang);
-    cy = bottom + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2; // curva horária
-  } else if(px < left && py > bottom){
-    // Canto Inferior Esquerdo
-    const ang = Math.atan2(py - bottom, px - left);
+    cz = bottom + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2;
+  } else if(px < left && pz > bottom){
+    const ang = Math.atan2(pz - bottom, px - left);
     cx = left + midR * Math.cos(ang);
-    cy = bottom + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2; // curva horária
+    cz = bottom + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2;
   } else {
-    // 2. Quatro retas
-    const dTop = Math.abs(py - midY);
-    const dBottom = Math.abs(py - (midY + midH));
-    const dLeft = Math.abs(px - midX);
-    const dRight = Math.abs(px - (midX + midW));
+    // Retas
+    const midTopZ = -halfH + t.roadWidth / 2;
+    const midBottomZ = halfH - t.roadWidth / 2;
+    const midLeftX = -halfW + t.roadWidth / 2;
+    const midRightX = halfW - t.roadWidth / 2;
+
+    const dTop = Math.abs(pz - midTopZ);
+    const dBottom = Math.abs(pz - midBottomZ);
+    const dLeft = Math.abs(px - midLeftX);
+    const dRight = Math.abs(px - midRightX);
     const minD = Math.min(dTop, dBottom, dLeft, dRight);
 
     if(minD === dTop){
       cx = Math.max(left, Math.min(right, px));
-      cy = midY;
-      forwardAngle = 0; // Indo para a direita
+      cz = midTopZ;
+      forwardAngle = 0; // Indo para +X
     } else if(minD === dRight){
-      cx = midX + midW;
-      cy = Math.max(top, Math.min(bottom, py));
-      forwardAngle = Math.PI / 2; // Indo para baixo
+      cx = midRightX;
+      cz = Math.max(top, Math.min(bottom, pz));
+      forwardAngle = Math.PI / 2; // Indo para +Z
     } else if(minD === dBottom){
       cx = Math.max(left, Math.min(right, px));
-      cy = midY + midH;
-      forwardAngle = Math.PI; // Indo para a esquerda
+      cz = midBottomZ;
+      forwardAngle = Math.PI; // Indo para -X
     } else {
-      cx = midX;
-      cy = Math.max(top, Math.min(bottom, py));
-      forwardAngle = -Math.PI / 2; // Indo para cima
+      cx = midLeftX;
+      cz = Math.max(top, Math.min(bottom, pz));
+      forwardAngle = -Math.PI / 2; // Indo para -Z
     }
   }
 
-  const dist = Math.hypot(px - cx, py - cy);
-  return { cx, cy, dist, forwardAngle };
+  const dist = Math.hypot(px - cx, pz - cz);
+  return { cx, cz, dist, forwardAngle };
 }
+
+/* Ponto param├®trico para bots no circuito */
+function getBotPoseAtT(progressT){
+  const t = game3D.trackDimensions;
+  const perimeter = 2 * (t.w - t.roadWidth + t.h - t.roadWidth);
+  const dist = progressT * perimeter;
+  const halfW = t.w / 2 - t.roadWidth / 2;
+  const halfH = t.h / 2 - t.roadWidth / 2;
+
+  let x = 0, z = -halfH, angle = 0, steer = 0;
+  const topLen = halfW * 2;
+  const rightLen = halfH * 2;
+
+  if (dist < topLen) {
+    x = -halfW + dist;
+    z = -halfH;
+    angle = 0;
+  } else if (dist < topLen + rightLen) {
+    x = halfW;
+    z = -halfH + (dist - topLen);
+    angle = Math.PI / 2;
+  } else if (dist < topLen * 2 + rightLen) {
+    x = halfW - (dist - (topLen + rightLen));
+    z = halfH;
+    angle = Math.PI;
+  } else {
+    x = -halfW;
+    z = halfH - (dist - (topLen * 2 + rightLen));
+    angle = -Math.PI / 2;
+  }
+
+  return { x, z, angle, steer, roll: Math.sin(progressT * Math.PI * 4) * 0.4 };
+}
+
+/* ============================================================================
+   LOOP DE F├ìSICA E ATUALIZA├ç├âO
+   ========================================================================== */
+let lastMultiplayerSend = 0;
 
 function updatePhysics(){
   if(!started) return;
 
-  const t = getTrackDimensions();
-
-  // 1. Direção / Curvas com vetor força
+  // 1. Dire├º├úo / Curvas com vetor for├ºa
   car.vectorLeftActive = !!(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]);
   car.vectorRightActive = !!(keysPressed["ArrowRight"] || keysPressed["d"] || keysPressed["D"]);
 
@@ -1138,146 +600,108 @@ function updatePhysics(){
     if(Math.random() < 0.15) sTireScreech();
   }
 
-  // 1.1 Dinâmica de Amortecedores e Suspensão (Compressão lateral / Roll & Pitch)
-  // Alvo de compressão lateral: se vira para esquerda (turnDirection < 0), o chassi rola para a direita (+roll) pela força centrífuga
+  // 2. Amortecedores / Compress├úo Lateral Realista (Roll & Pitch)
   const targetRoll = turnDirection * 0.9;
   car.roll += (targetRoll - car.roll) * 0.18;
 
-  // Alvo de empinamento / pitch: ao acelerar ou ligar turbo, a traseira assenta e a frente empina levemente
   const targetPitch = car.turboActive ? 0.85 : (car.speed > 0.5 ? 0.35 : 0);
   car.pitch += (targetPitch - car.pitch) * 0.14;
 
-  // Esterçamento suave das rodas dianteiras
   const targetSteer = turnDirection * 0.38;
   car.steerAngle += (targetSteer - car.steerAngle) * 0.25;
 
-  // Compressão dos amortecedores nos 4 cantos:
-  // - Lado de fora da curva comprime (suspensão afunda)
-  // - Lado de dentro da curva estica
-  const maxCompression = 4.5;
-  car.suspensionOffsets.fl = -car.roll * maxCompression + car.pitch * 1.5;
-  car.suspensionOffsets.fr = car.roll * maxCompression + car.pitch * 1.5;
-  car.suspensionOffsets.rl = -car.roll * (maxCompression * 0.8) - car.pitch * 2.2;
-  car.suspensionOffsets.rr = car.roll * (maxCompression * 0.8) - car.pitch * 2.2;
-
-  // 2. Velocidade e Turbo
+  // 3. Velocidade e Turbo
   const targetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
   car.speed += (targetSpeed - car.speed) * 0.1;
 
   if(car.turboActive){
     car.turboTimer--;
     if(car.turboTimer <= 0) car.turboActive = false;
-
-    // Fumaça e partículas de fogo no rastro do turbo
-    const tailX = car.x - Math.cos(car.angle) * (car.length * 0.5);
-    const tailY = car.y - Math.sin(car.angle) * (car.length * 0.5);
-    sprinkle(tailX + rnd(-3, 3), tailY + rnd(-3, 3), pick(["#ff9a44", "#ffd23f", "#7ee8fa"]));
   } else {
-    // Recarrega o turbo gradualmente
     car.turboCharge = Math.min(1.0, car.turboCharge + 0.0035);
   }
   $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
 
-  // 3. Atualiza posição do carro
+  // 4. Posi├º├úo no mundo 3D (X e Z)
   car.x += Math.cos(car.angle) * car.speed;
-  car.y += Math.sin(car.angle) * car.speed;
+  car.z += Math.sin(car.angle) * car.speed;
 
-  // 4. Marcas de pneu na pista
-  if(car.vectorLeftActive || car.vectorRightActive || car.turboActive){
-    if(Math.random() < 0.6){
-      skidMarks.push({
-        x: car.x,
-        y: car.y,
-        alpha: 0.45
-      });
-      if(skidMarks.length > 80) skidMarks.shift();
-    }
-  }
-
-  // 5. Colisão Suave e Anti-Travamento (mantém o carro 100% no asfalto da pista)
+  // 5. Colis├úo Suave com Barreiras da Pista Extra Larga
   if(car.bounceTimer > 0) car.bounceTimer--;
 
-  const trackInfo = getTrackCenterPoint(car.x, car.y, t);
-  const maxAllowDist = (t.roadWidth * 0.5) - (car.width * 0.38);
+  const trackInfo = getTrack3DPoint(car.x, car.z);
+  const roadWidth = game3D.trackDimensions.roadWidth;
+  const maxAllowDist = (roadWidth * 0.5) - (car.width * 0.38);
 
   if(trackInfo.dist > maxAllowDist){
-    // Tocou na zebra ou tentou sair da pista (externa ou ilha interna)
-    // 1. Limita o carro rigorosamente ao asfalto, empurrando-o de volta
     const pushFactor = maxAllowDist / trackInfo.dist;
     car.x = trackInfo.cx + (car.x - trackInfo.cx) * pushFactor;
-    car.y = trackInfo.cy + (car.y - trackInfo.cy) * pushFactor;
+    car.z = trackInfo.cz + (car.z - trackInfo.cz) * pushFactor;
 
-    // 2. Efeito sonoro e partículas de borracha na zebra
     if(car.bounceTimer === 0){
       car.bounceTimer = 10;
       sBounce();
-      sprinkle(car.x, car.y, "#ffffff");
     }
 
-    // 3. Reorienta suavemente para a direção correta da pista (tangente horária)
     let diffAngle = trackInfo.forwardAngle - car.angle;
     while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
     while(diffAngle < -Math.PI) diffAngle += Math.PI * 2;
     car.angle += diffAngle * 0.45;
-
     car.speed *= 0.82;
   }
 
-  // 4. Salva-vidas instantâneo: se por qualquer motivo o carro for jogado longe da pista,
-  // reposiciona imediatamente no asfalto com a proa correta!
-  if(trackInfo.dist > t.roadWidth * 0.85){
-    car.x = trackInfo.cx;
-    car.y = trackInfo.cy;
-    car.angle = trackInfo.forwardAngle;
-    car.speed = car.baseSpeed * gameSpeed * 0.6;
-    sprinkle(car.x, car.y, "#ffd23f");
-  }
-
-  // 6. Gravação de telemetria da volta atual (para o fantasma)
+  // 6. Grava├º├úo de telemetria da volta (Fantasma)
   if(lapStartTime > 0){
     const elapsed = performance.now() - lapStartTime;
     currentLapFrames.push({
       t: elapsed,
-      nx: (car.x - t.x) / t.w,
-      ny: (car.y - t.y) / t.h,
+      x: car.x,
+      z: car.z,
       angle: car.angle,
       turbo: car.turboActive,
       roll: car.roll,
       pitch: car.pitch,
       steerAngle: car.steerAngle
     });
-    // Atualiza cronômetro no HUD a cada frame
-    $("lapTimer").textContent = `⏱️ ${formatTime(elapsed)}`;
+    $("lapTimer").textContent = `ÔÅ▒´©Å ${formatTime(elapsed)}`;
   }
 
-  // 7. Verificação de Checkpoints e Voltas
-  checkLapProgress(t);
+  // 7. Checkpoints e Voltas
+  checkLapProgress();
 
-  // 8. Atualização do Velocímetro no HUD
+  // 8. Sincroniza├º├úo Multiplayer via Firebase
+  if(selectedMode === "multi" && performance.now() - lastMultiplayerSend > 45){
+    lastMultiplayerSend = performance.now();
+    window.multiplayerManager.updateMyState({
+      x: car.x,
+      z: car.z,
+      angle: car.angle,
+      roll: car.roll,
+      pitch: car.pitch,
+      steer: car.steerAngle,
+      turbo: car.turboActive,
+      lap: totalLapsCompleted + 1,
+      bestLap: bestLapTime || 0
+    });
+  }
+
+  // 9. Atualiza├º├úo no HUD
   const displayKmh = Math.round(car.speed * 20);
-  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "🚀 TURBO!" : ""}`;
+  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "­ƒÜÇ TURBO!" : ""}`;
 }
 
-/* Verificação de Checkpoints ao longo dos 4 quadrantes da pista quadrada */
-function checkLapProgress(t){
-  const midX = t.x + t.w / 2;
-  const midY = t.y + t.h / 2;
+/* Verifica├º├úo de Checkpoints ao longo dos 4 quadrantes da pista 3D */
+function checkLapProgress(){
+  // Checkpoints nos quadrantes
+  if(car.x > 0 && car.z < 0) checkpoints[0] = true;
+  if(checkpoints[0] && car.x > 0 && car.z > 0) checkpoints[1] = true;
+  if(checkpoints[1] && car.x < 0 && car.z > 0) checkpoints[2] = true;
+  if(checkpoints[2] && car.x < 0 && car.z < 0) checkpoints[3] = true;
 
-  // Checkpoint 0: Reta superior direita
-  if(car.x > midX && car.y < midY) checkpoints[0] = true;
-  // Checkpoint 1: Reta inferior direita
-  if(checkpoints[0] && car.x > midX && car.y > midY) checkpoints[1] = true;
-  // Checkpoint 2: Reta inferior esquerda
-  if(checkpoints[1] && car.x < midX && car.y > midY) checkpoints[2] = true;
-  // Checkpoint 3: Reta superior esquerda (aproximando da linha de chegada)
-  if(checkpoints[2] && car.x < midX && car.y < midY) checkpoints[3] = true;
+  // Linha de chegada em x = 0 na reta superior (z < 0)
+  const crossedFinish = (prevCarX < 0 && car.x >= 0) || (car.x >= 0 && car.x <= 40);
 
-  // Cruzou a linha de chegada após completar todos os checkpoints no sentido horário!
-  const finishX = t.x + t.w * 0.48;
-  const crossedFinish = (prevCarX < finishX && car.x >= finishX) ||
-                        (car.x >= finishX && car.x <= finishX + 60);
-
-  if(checkpoints[3] && crossedFinish && car.y < t.y + t.roadWidth){
+  if(checkpoints[3] && crossedFinish && car.z < -100){
     for(let i = 0; i < 4; i++) checkpoints[i] = false;
 
     const now = performance.now();
@@ -1292,23 +716,20 @@ function checkLapProgress(t){
 
       sLapFanfare();
       confetti();
-      fireworks(innerWidth / 2, innerHeight / 3, Math.random() * 360);
       speak(`Novo recorde! ${formatTimeSpeech(lapDuration)}!`);
-      showLapBanner(`🏆 NOVO RECORDE: ${formatTime(lapDuration)}!`, true);
+      showLapBanner(`­ƒÅå NOVO RECORDE: ${formatTime(lapDuration)}!`, true);
 
       const bestEl = $("bestLapInfo");
-      bestEl.textContent = `⭐ Recorde: ${formatTime(bestLapTime)}`;
+      bestEl.textContent = `Ô¡É Recorde: ${formatTime(bestLapTime)}`;
       bestEl.classList.add("record-pulse");
       setTimeout(() => bestEl.classList.remove("record-pulse"), 3500);
     } else {
       sLapFanfare();
-      sprinkle(car.x, car.y, "#ffd23f");
       speak(`Volta completa! ${formatTimeSpeech(lapDuration)}`);
-      showLapBanner(`🏁 Volta ${totalLapsCompleted}: ${formatTime(lapDuration)}`, false);
+      showLapBanner(`­ƒÅü Volta ${totalLapsCompleted}: ${formatTime(lapDuration)}`, false);
     }
 
-    $("lapCounter").textContent = `🏁 Voltas: ${totalLapsCompleted}`;
-
+    $("lapCounter").textContent = `­ƒÅü Voltas: ${totalLapsCompleted}`;
     currentLapFrames = [];
     lapStartTime = performance.now();
   }
@@ -1316,47 +737,70 @@ function checkLapProgress(t){
   prevCarX = car.x;
 }
 
+function getGhostPose(elapsed){
+  if(!bestGhostFrames || bestGhostFrames.length === 0 || elapsed >= bestGhostDuration) return null;
+
+  let low = 0, high = bestGhostFrames.length - 1;
+  while(low <= high){
+    const mid = (low + high) >> 1;
+    if(bestGhostFrames[mid].t < elapsed) low = mid + 1;
+    else high = mid - 1;
+  }
+  const i = Math.max(0, Math.min(bestGhostFrames.length - 1, low));
+  if(i === 0) return bestGhostFrames[0];
+
+  const f0 = bestGhostFrames[i - 1];
+  const f1 = bestGhostFrames[i];
+  const factor = (elapsed - f0.t) / (f1.t - f0.t || 1);
+
+  let dAngle = f1.angle - f0.angle;
+  while(dAngle > Math.PI) dAngle -= Math.PI * 2;
+  while(dAngle < -Math.PI) dAngle += Math.PI * 2;
+
+  return {
+    x: f0.x + (f1.x - f0.x) * factor,
+    z: f0.z + (f1.z - f0.z) * factor,
+    angle: f0.angle + dAngle * factor,
+    roll: (f0.roll || 0) + ((f1.roll || 0) - (f0.roll || 0)) * factor,
+    pitch: (f0.pitch || 0) + ((f1.pitch || 0) - (f0.pitch || 0)) * factor,
+    steerAngle: (f0.steerAngle || 0) + ((f1.steerAngle || 0) - (f0.steerAngle || 0)) * factor
+  };
+}
+
 /* ============================================================================
-   RENDERIZAÇÃO
+   RENDERIZA├ç├âO 3D EM 60 FPS
    ========================================================================== */
-function render(){
-  gctx.clearRect(0, 0, innerWidth, innerHeight);
+function animate(){
+  requestAnimationFrame(animate);
 
-  const t = getTrackDimensions();
-  
-  // 1. Desenha a pista quadrada
-  drawTrack(t);
+  // 1. Atualiza F├¡sica do jogador
+  updatePhysics();
 
-  // 2. Desenha marcas de derrapagem
-  gctx.save();
-  skidMarks.forEach(s => {
-    s.alpha -= 0.002;
-    gctx.fillStyle = `rgba(18, 14, 34, ${Math.max(0, s.alpha)})`;
-    gctx.beginPath();
-    gctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
-    gctx.fill();
-  });
-  gctx.restore();
+  // 2. Atualiza modelo 3D do carro com suspens├úo e amortecedores
+  game3D.updatePlayerCar(car);
 
-  // 3. Desenha o Carrinho Fantasma da melhor volta (se já houver recorde)
-  if(started && bestGhostFrames && bestGhostFrames.length > 0 && lapStartTime > 0){
+  // 3. Atualiza Fantasma do recorde (se aplic├ível)
+  if(started && bestGhostFrames && lapStartTime > 0 && selectedMode === "solo"){
     const elapsed = performance.now() - lapStartTime;
-    const ghostPose = getGhostPose(elapsed);
-    if(ghostPose){
-      drawGhostCar(ghostPose);
-    }
+    game3D.updateGhostCar(getGhostPose(elapsed));
+  } else {
+    game3D.updateGhostCar(null);
   }
 
-  // 4. Atualiza física e desenha o carrinho do jogador com vetor força
-  updatePhysics();
-  drawCar();
+  // 4. Atualiza Multiplayer / Bots em tempo real
+  if(selectedMode === "multi"){
+    const delta = 0.016;
+    const others = window.multiplayerManager.updateBots(delta, getBotPoseAtT);
+    game3D.updateOtherCars(others);
+  }
 
-  requestAnimationFrame(render);
+  // 5. Renderiza a cena Three.js
+  game3D.render();
 }
-requestAnimationFrame(render);
+requestAnimationFrame(animate);
 
 /* ============================================================================
-   CONTROLE DE TECLADO E BOTÕES TOUCH
+   CONTROLES DE TECLADO E TOUCH
    ========================================================================== */
 function onKeyDown(e){
   if(!travaOn && (e.key === "F5" || e.key === "F11" || e.key === "F12")) return;
@@ -1365,23 +809,15 @@ function onKeyDown(e){
   if(!started) return;
 
   keysPressed[e.key] = true;
-
   if(e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W"){
     activateTurbo();
   }
 }
 
-function onKeyUp(e){
-  keysPressed[e.key] = false;
-}
+function onKeyUp(e){ keysPressed[e.key] = false; }
 
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
-
-// Botões Touch
-const btnLeft = $("btnLeft");
-const btnRight = $("btnRight");
-const btnTurbo = $("btnTurbo");
 
 function bindTouch(btn, keyName){
   btn.addEventListener("pointerdown", e => {
@@ -1399,36 +835,42 @@ function bindTouch(btn, keyName){
   btn.addEventListener("pointerleave", release);
 }
 
-bindTouch(btnLeft, "ArrowLeft");
-bindTouch(btnRight, "ArrowRight");
+bindTouch($("btnLeft"), "ArrowLeft");
+bindTouch($("btnRight"), "ArrowRight");
 
-btnTurbo.addEventListener("pointerdown", e => {
+$("btnTurbo").addEventListener("pointerdown", e => {
   e.preventDefault();
-  btnTurbo.classList.add("active");
+  $("btnTurbo").classList.add("active");
   activateTurbo();
 });
-btnTurbo.addEventListener("pointerup", () => btnTurbo.classList.remove("active"));
-btnTurbo.addEventListener("pointercancel", () => btnTurbo.classList.remove("active"));
+$("btnTurbo").addEventListener("pointerup", () => $("btnTurbo").classList.remove("active"));
+$("btnTurbo").addEventListener("pointercancel", () => $("btnTurbo").classList.remove("active"));
 
 /* ============================================================================
-   INICIALIZAÇÃO E FERRAMENTAS
+   INICIALIZA├ç├âO
    ========================================================================== */
 $("btnStart").addEventListener("click", () => {
   started = true;
+  const roomName = $("inputRoom").value || "ROCK";
+  const pilotName = $("inputPilot").value || "Piloto Rock";
+
+  if(selectedMode === "multi"){
+    window.multiplayerManager.joinRoom(roomName, pilotName, car.color);
+    $("multiplayerTag").textContent = "­ƒæÑ Sala: " + roomName;
+  }
+
   $("start").remove();
   try{ ac().resume(); }catch(e){}
-  // trava removida do inicio
-  speak("Prepare-se! 3, 2, 1, já!");
+  // N├úo for├ºa tela cheia automaticamente - usu├írio pode ativar via bot├úo ÔøÂ quando quiser
+  speak("Liguem seus motores! 3, 2, 1, j├í!");
   sTurbo();
 
-  // Inicia o cronômetro da primeira volta
   lapStartTime = performance.now();
   currentLapFrames = [];
   prevCarX = car.x;
 
-  // Inicia a batida de Rock n' Roll em loop suave
   if(!musicTimer){
-    musicTimer = setInterval(playRockBeat, 240); // ~125 BPM
+    musicTimer = setInterval(playRockBeat, 240);
   }
 });
 
@@ -1444,13 +886,13 @@ $("btnFull").addEventListener("click", () => {
 
 $("btnSound").addEventListener("click", () => {
   soundOn = !soundOn;
-  $("btnSound").textContent = soundOn ? "🔊 Som: ligado" : "🔇 Som: desligado";
+  $("btnSound").textContent = soundOn ? "­ƒöè Som: ligado" : "­ƒöç Som: desligado";
 });
 
 $("btnTrava").addEventListener("click", travaToggle);
 document.addEventListener("trava", e => {
   document.body.classList.toggle("travado", e.detail.on);
-  $("btnTrava").textContent = e.detail.on ? "🔒 Travado" : "🔓 Travar teclado";
+  $("btnTrava").textContent = e.detail.on ? "­ƒöÆ Travado" : "­ƒöô Travar teclado";
 });
 </script>
 </body>
