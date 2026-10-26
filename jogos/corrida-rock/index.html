@@ -861,7 +861,7 @@ $("btnStart").addEventListener("click", () => {
 
   $("start").remove();
   try{ ac().resume(); }catch(e){}
-  travar();
+  // Não força tela cheia automaticamente - usuário pode ativar via botão ⛶ quando quiser
   speak("Liguem seus motores! 3, 2, 1, já!");
   sTurbo();
 

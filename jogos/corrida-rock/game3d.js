@@ -1,5 +1,5 @@
 /* ============================================================================
-   CORRIDA ROCK 3D — ENGINE THREE.JS (PISTA, CARRO, AMORTECEDORES E SHADERS)
+   CORRIDA ROCK 3D — ENGINE THREE.JS (ESTILO ROCK N' ROLL RACING SNES)
    ========================================================================== */
 
 class Game3D {
@@ -10,17 +10,15 @@ class Game3D {
     this.renderer = null;
     this.carGroup = null;
     this.carBody = null;
-    this.wheels = [];
-    this.suspensionArms = [];
     this.forceVectorArrow = null;
-    this.turboParticles = [];
+    this.turboFlameParticles = [];
     this.ghostGroup = null;
     this.otherCars = {}; // { id: THREE.Group }
-    this.trackMeshes = [];
     this.trackDimensions = null;
     this.clock = new THREE.Clock();
 
     this.initScene();
+    this.buildSNESPlanetEnvironment();
     this.buildTrack();
     this.buildPlayerCar();
     this.buildForceVector();
@@ -31,13 +29,14 @@ class Game3D {
 
   initScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color("#120e24");
-    this.scene.fog = new THREE.FogExp2("#120e24", 0.0012);
+    // Fundo espacial roxo/cósmico característico dos planetas do SNES (ex: Planet Chem 6 / Bogmire / New Mojave)
+    this.scene.background = new THREE.Color("#0a0618");
+    this.scene.fog = new THREE.FogExp2("#0a0618", 0.00085);
 
-    // Câmera isométrica com visão superior em perspectiva dramática
+    // Câmera isométrica em ângulo clássico de 45° (Rock n' Roll Racing SNES)
     const aspect = window.innerWidth / window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(45, aspect, 1, 3000);
-    this.camera.position.set(0, 580, 520);
+    this.camera = new THREE.PerspectiveCamera(40, aspect, 1, 4000);
+    this.camera.position.set(0, 520, 560);
     this.camera.lookAt(0, 0, 0);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
@@ -50,60 +49,82 @@ class Game3D {
   }
 
   setupLighting() {
-    // Luz ambiente suave
-    const ambientLight = new THREE.AmbientLight("#a29bfe", 0.75);
+    // Luz ambiente com tom arroxeado/azulado sci-fi
+    const ambientLight = new THREE.AmbientLight("#8c7ae6", 0.85);
     this.scene.add(ambientLight);
 
-    // Luz Direcional Principal (Sol do circuito com sombras nítidas)
-    const dirLight = new THREE.DirectionalLight("#fff2cc", 1.4);
-    dirLight.position.set(250, 600, 300);
+    // Sol cósmico forte com contraste arcade
+    const dirLight = new THREE.DirectionalLight("#fff2a8", 1.6);
+    dirLight.position.set(320, 650, 280);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near = 50;
-    dirLight.shadow.camera.far = 1600;
-    const d = 600;
+    dirLight.shadow.camera.far = 1800;
+    const d = 650;
     dirLight.shadow.camera.left = -d;
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.bias = -0.0005;
+    dirLight.shadow.bias = -0.0004;
     this.scene.add(dirLight);
 
-    // Luz secundária quente de preenchimento (estilo pôr do sol rock n' roll)
-    const rimLight = new THREE.DirectionalLight("#ff7675", 0.6);
-    rimLight.position.set(-300, 200, -300);
-    this.scene.add(rimLight);
+    // Luz de preenchimento magenta/neon (estilo visual anos 90)
+    const neonRim = new THREE.DirectionalLight("#e056fd", 0.65);
+    neonRim.position.set(-350, 220, -320);
+    this.scene.add(neonRim);
+  }
+
+  buildSNESPlanetEnvironment() {
+    // 1. Chão do planeta alienígena (terreno rochoso escuro com relevo)
+    const groundGeo = new THREE.PlaneGeometry(3000, 3000, 32, 32);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: "#0f0b24",
+      roughness: 0.9,
+      metalness: 0.15
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -4;
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+
+    // 2. Cristais e estruturas alienígenas nas bordas do circuito (estilo cenários do SNES)
+    const crystalGeo = new THREE.ConeGeometry(14, 45, 6);
+    const crystalMat = new THREE.MeshStandardMaterial({
+      color: "#686de0",
+      emissive: "#4834d4",
+      emissiveIntensity: 0.45,
+      roughness: 0.2,
+      metalness: 0.8
+    });
+
+    for (let i = 0; i < 28; i++) {
+      const angle = (i / 28) * Math.PI * 2;
+      const dist = 580 + (i % 3) * 60;
+      const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+      crystal.position.set(Math.cos(angle) * dist, 18, Math.sin(angle) * dist);
+      crystal.rotation.x = (Math.random() - 0.5) * 0.4;
+      crystal.rotation.z = (Math.random() - 0.5) * 0.4;
+      crystal.castShadow = true;
+      this.scene.add(crystal);
+    }
   }
 
   buildTrack() {
-    // Dimensões do circuito 3D
-    const w = 820;
-    const h = 580;
-    const roadWidth = 210; // Pista extra larga
+    // Dimensões do circuito 3D - Pista bem mais ampla
+    const w = 840;
+    const h = 600;
+    const roadWidth = 220; // Pista extra larga
     const r = 160;
 
     this.trackDimensions = { w, h, roadWidth, r };
 
-    // 1. Chão com grama e relevo
-    const groundGeo = new THREE.PlaneGeometry(2400, 2400);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: "#0c0a1a",
-      roughness: 0.9,
-      metalness: 0.1
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-
-    // 2. Criação do caminho da pista em 2D Shape extrudado
+    // Caminho da pista 2D para extrusão com curvas suaves
     const shape = new THREE.Shape();
     const halfW = w / 2;
     const halfH = h / 2;
 
-    // Retângulo arredondado externo
     shape.moveTo(-halfW + r, -halfH);
     shape.lineTo(halfW - r, -halfH);
     shape.absarc(halfW - r, -halfH + r, r, -Math.PI / 2, 0, false);
@@ -114,7 +135,7 @@ class Game3D {
     shape.lineTo(-halfW, -halfH + r);
     shape.absarc(-halfW + r, -halfH + r, r, Math.PI, Math.PI * 1.5, false);
 
-    // Furo central (Ilha interna)
+    // Furo central (Miolo da pista / Ilha interna)
     const hole = new THREE.Path();
     const iw = halfW - roadWidth;
     const ih = halfH - roadWidth;
@@ -132,13 +153,14 @@ class Game3D {
 
     shape.holes.push(hole);
 
-    // Asfalto com relevo de 3 unidades
-    const extrudeSettings = { depth: 3, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 2, bevelThickness: 1.5 };
+    // Pista com relevo robusto e chanfrado 3D
+    const extrudeSettings = { depth: 4, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 3, bevelThickness: 2 };
     const trackGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    // Asfalto escuro com leve reflexo metálico e borracha de pneu (estilo asfalto futurista do Rock n Roll Racing)
     const trackMat = new THREE.MeshStandardMaterial({
-      color: "#242038",
-      roughness: 0.65,
-      metalness: 0.25
+      color: "#28243c",
+      roughness: 0.55,
+      metalness: 0.35
     });
 
     const trackMesh = new THREE.Mesh(trackGeo, trackMat);
@@ -147,241 +169,327 @@ class Game3D {
     trackMesh.receiveShadow = true;
     this.scene.add(trackMesh);
 
-    // 3. Zebras (Curbs) chanfradas vermelhas e brancas nas bordas
-    this.build3DCurbs(shape, hole, r, ir);
+    // Linha guia amarela tracejada central no asfalto
+    this.buildCenterRoadLine(halfW, halfH, roadWidth);
 
-    // 4. Linha de Chegada Quadriculada 3D
-    this.build3DFinishLine(halfW, halfH, roadWidth);
+    // Zebras chanfradas estilo arcade SNES
+    this.buildSNESCurbs(halfW, halfH, roadWidth);
+
+    // Pórtico de Largada / Chegada com luzes de semáforo
+    this.buildSNESGantry(halfW, halfH, roadWidth);
   }
 
-  build3DCurbs(shape, hole, r, ir) {
-    // Material brilhante das zebras
-    const curbMatWhite = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.4 });
-    const curbMatRed = new THREE.MeshStandardMaterial({ color: "#ff4757", roughness: 0.4 });
+  buildCenterRoadLine(halfW, halfH, roadWidth) {
+    const lineMat = new THREE.MeshBasicMaterial({ color: "#ffd23f" });
+    const dashGeo = new THREE.BoxGeometry(14, 0.4, 3);
+    const midTopZ = -halfH + roadWidth / 2;
+    const midBottomZ = halfH - roadWidth / 2;
 
-    // Cria anéis chanfrados simples para marcar o perímetro
-    const curbGeo = new THREE.BoxGeometry(16, 4, 16);
-    // Borda estilizada nas retas principais
-    for (let x = -280; x <= 280; x += 32) {
-      // Borda externa superior e inferior
-      const c1 = new THREE.Mesh(curbGeo, (x / 32) % 2 === 0 ? curbMatRed : curbMatWhite);
-      c1.position.set(x, 2, -290);
-      c1.receiveShadow = true;
-      this.scene.add(c1);
+    for (let x = -halfW + roadWidth; x <= halfW - roadWidth; x += 32) {
+      const d1 = new THREE.Mesh(dashGeo, lineMat);
+      d1.position.set(x, 4.2, midTopZ);
+      this.scene.add(d1);
 
-      const c2 = new THREE.Mesh(curbGeo, (x / 32) % 2 === 0 ? curbMatWhite : curbMatRed);
-      c2.position.set(x, 2, 290);
-      c2.receiveShadow = true;
-      this.scene.add(c2);
+      const d2 = new THREE.Mesh(dashGeo, lineMat);
+      d2.position.set(x, 4.2, midBottomZ);
+      this.scene.add(d2);
     }
   }
 
-  build3DFinishLine(halfW, halfH, roadWidth) {
-    const finishGroup = new THREE.Group();
-    const sqSize = 18;
-    const rows = 2;
-    const cols = Math.floor(roadWidth / sqSize);
+  buildSNESCurbs(halfW, halfH, roadWidth) {
+    const redMat = new THREE.MeshStandardMaterial({ color: "#eb2f06", roughness: 0.35 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: "#f5f6fa", roughness: 0.35 });
 
-    const matWhite = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.3 });
-    const matDark = new THREE.MeshStandardMaterial({ color: "#161324", roughness: 0.5 });
+    // Barreiras e zebras segmentadas nas laterais
+    const blockGeo = new THREE.BoxGeometry(18, 5, 8);
+
+    for (let x = -halfW + 60; x <= halfW - 60; x += 20) {
+      const isRed = (Math.floor(x / 20) % 2 === 0);
+      const mat = isRed ? redMat : whiteMat;
+
+      // Borda Externa Superior e Inferior
+      const cTop = new THREE.Mesh(blockGeo, mat);
+      cTop.position.set(x, 4.5, -halfH - 2);
+      cTop.castShadow = true;
+      this.scene.add(cTop);
+
+      const cBottom = new THREE.Mesh(blockGeo, mat);
+      cBottom.position.set(x, 4.5, halfH + 2);
+      cBottom.castShadow = true;
+      this.scene.add(cBottom);
+
+      // Borda Interna Superior e Inferior
+      const cInTop = new THREE.Mesh(blockGeo, mat);
+      cInTop.position.set(x * 0.7, 4.5, -halfH + roadWidth + 2);
+      cInTop.castShadow = true;
+      this.scene.add(cInTop);
+
+      const cInBottom = new THREE.Mesh(blockGeo, mat);
+      cInBottom.position.set(x * 0.7, 4.5, halfH - roadWidth - 2);
+      cInBottom.castShadow = true;
+      this.scene.add(cInBottom);
+    }
+  }
+
+  buildSNESGantry(halfW, halfH, roadWidth) {
+    const gantry = new THREE.Group();
+
+    // Vigas treliçadas amarelas estilo industrial rock
+    const trussMat = new THREE.MeshStandardMaterial({ color: "#fbc531", metalness: 0.7, roughness: 0.3 });
+    const colGeo = new THREE.CylinderGeometry(5, 5, 130, 8);
+
+    const post1 = new THREE.Mesh(colGeo, trussMat);
+    post1.position.set(0, 65, -halfH);
+    post1.castShadow = true;
+    gantry.add(post1);
+
+    const post2 = new THREE.Mesh(colGeo, trussMat);
+    post2.position.set(0, 65, -halfH + roadWidth);
+    post2.castShadow = true;
+    gantry.add(post2);
+
+    const beamGeo = new THREE.BoxGeometry(14, 14, roadWidth + 8);
+    const beam = new THREE.Mesh(beamGeo, trussMat);
+    beam.position.set(0, 120, -halfH + roadWidth / 2);
+    beam.castShadow = true;
+    gantry.add(beam);
+
+    // Semáforo com luzes neon de largada (Vermelha, Amarela, Verde)
+    const lampGeo = new THREE.SphereGeometry(4, 16, 16);
+    const redLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#ff4757" }));
+    redLight.position.set(8, 120, -halfH + roadWidth / 2 - 20);
+    gantry.add(redLight);
+
+    const yellowLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#ffa502" }));
+    yellowLight.position.set(8, 120, -halfH + roadWidth / 2);
+    gantry.add(yellowLight);
+
+    const greenLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#2ed573" }));
+    greenLight.position.set(8, 120, -halfH + roadWidth / 2 + 20);
+    gantry.add(greenLight);
+
+    // Linha de chegada quadriculada no chão
+    const sqSize = 16;
+    const cols = Math.floor(roadWidth / sqSize);
+    const matW = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.2 });
+    const matB = new THREE.MeshStandardMaterial({ color: "#1e272e", roughness: 0.4 });
     const tileGeo = new THREE.PlaneGeometry(sqSize, sqSize);
 
-    for (let r = 0; r < rows; r++) {
+    for (let r = 0; r < 2; r++) {
       for (let c = 0; c < cols; c++) {
-        const mat = (r + c) % 2 === 0 ? matWhite : matDark;
-        const tile = new THREE.Mesh(tileGeo, mat);
+        const tile = new THREE.Mesh(tileGeo, (r + c) % 2 === 0 ? matW : matB);
         tile.rotation.x = -Math.PI / 2;
-        tile.position.set((r - 0.5) * sqSize, 3.2, -halfH + c * sqSize + sqSize / 2);
+        tile.position.set((r - 0.5) * sqSize, 4.2, -halfH + c * sqSize + sqSize / 2);
         tile.receiveShadow = true;
-        finishGroup.add(tile);
+        gantry.add(tile);
       }
     }
 
-    // Pórtico metálico 3D de largada com letreiro Rock
-    const postMat = new THREE.MeshStandardMaterial({ color: "#ffd23f", metalness: 0.8, roughness: 0.2 });
-    const postGeo = new THREE.CylinderGeometry(4, 4, 120, 16);
-    const post1 = new THREE.Mesh(postGeo, postMat);
-    post1.position.set(0, 60, -halfH);
-    post1.castShadow = true;
-    finishGroup.add(post1);
-
-    const post2 = new THREE.Mesh(postGeo, postMat);
-    post2.position.set(0, 60, -halfH + roadWidth);
-    post2.castShadow = true;
-    finishGroup.add(post2);
-
-    const crossbeamGeo = new THREE.BoxGeometry(10, 12, roadWidth);
-    const crossbeam = new THREE.Mesh(crossbeamGeo, postMat);
-    crossbeam.position.set(0, 115, -halfH + roadWidth / 2);
-    crossbeam.castShadow = true;
-    finishGroup.add(crossbeam);
-
-    this.scene.add(finishGroup);
+    this.scene.add(gantry);
   }
 
-  buildCarMesh(colorHex = "#ff4757", isGhost = false) {
+  /* Modelagem do Carro estilo Rock n' Roll Racing SNES (Marauder / Crusher / Battle Trak) */
+  buildCarMesh(colorHex = "#eb2f06", isGhost = false) {
     const group = new THREE.Group();
 
     // Materiais
-    const carMat = new THREE.MeshStandardMaterial({
+    const bodyMat = new THREE.MeshStandardMaterial({
       color: colorHex,
-      metalness: isGhost ? 0.2 : 0.82,
-      roughness: isGhost ? 0.3 : 0.25,
+      metalness: isGhost ? 0.3 : 0.85,
+      roughness: isGhost ? 0.4 : 0.2,
       transparent: isGhost,
       opacity: isGhost ? 0.55 : 1.0
     });
 
+    const chromeMat = new THREE.MeshStandardMaterial({
+      color: "#dfe4ea",
+      metalness: 0.95,
+      roughness: 0.1
+    });
+
     const glassMat = new THREE.MeshStandardMaterial({
-      color: "#18142c",
+      color: "#2f3542",
       metalness: 0.9,
       roughness: 0.1,
       transparent: isGhost,
       opacity: isGhost ? 0.45 : 0.95
     });
 
-    const wheelMat = new THREE.MeshStandardMaterial({
-      color: "#1a1727",
-      roughness: 0.8,
-      metalness: 0.1
+    const tireMat = new THREE.MeshStandardMaterial({
+      color: "#1e272e",
+      roughness: 0.85,
+      metalness: 0.05
     });
 
-    const rimMat = new THREE.MeshStandardMaterial({
-      color: "#ffd23f",
-      metalness: 0.85,
-      roughness: 0.2
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: "#eccc68",
+      metalness: 0.9,
+      roughness: 0.15
     });
 
-    // 1. Chassi principal do carro com formato esportivo aerodinâmico
-    const bodyGeo = new THREE.BoxGeometry(54, 16, 34);
-    const bodyMesh = new THREE.Mesh(bodyGeo, carMat);
-    bodyMesh.position.y = 12;
-    bodyMesh.castShadow = !isGhost;
-    bodyMesh.receiveShadow = !isGhost;
-    group.add(bodyMesh);
+    // 1. Chassi Musculoso (Muscle Car off-road / Mad Max)
+    const chassiGeo = new THREE.BoxGeometry(56, 14, 34);
+    const chassi = new THREE.Mesh(chassiGeo, bodyMat);
+    chassi.position.y = 12;
+    chassi.castShadow = !isGhost;
+    chassi.receiveShadow = !isGhost;
+    group.add(chassi);
 
-    // Cabine com para-brisa em cunha
-    const cabinGeo = new THREE.BoxGeometry(26, 12, 28);
-    const cabinMesh = new THREE.Mesh(cabinGeo, glassMat);
-    cabinMesh.position.set(-2, 22, 0);
-    cabinMesh.castShadow = !isGhost;
-    group.add(cabinMesh);
+    // Cabine arredondada e inclinada
+    const cabinGeo = new THREE.BoxGeometry(28, 12, 26);
+    const cabin = new THREE.Mesh(cabinGeo, glassMat);
+    cabin.position.set(-2, 22, 0);
+    cabin.castShadow = !isGhost;
+    group.add(cabin);
 
-    // Faixa central de corrida dourada/amarela
-    const stripeGeo = new THREE.BoxGeometry(54.2, 16.2, 8);
-    const stripeMat = new THREE.MeshStandardMaterial({ color: "#ffd23f", roughness: 0.3 });
-    const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
-    stripeMesh.position.y = 12;
-    group.add(stripeMesh);
+    // Supercharger / Soprador de ar cromado no capô (clássico dos carros do jogo!)
+    const blowerGeo = new THREE.BoxGeometry(10, 8, 12);
+    const blower = new THREE.Mesh(blowerGeo, chromeMat);
+    blower.position.set(16, 21, 0);
+    blower.castShadow = !isGhost;
+    group.add(blower);
 
-    // Aerofólio Traseiro Esportivo
-    const spoilerWingGeo = new THREE.BoxGeometry(8, 3, 36);
-    const spoilerWing = new THREE.Mesh(spoilerWingGeo, stripeMat);
-    spoilerWing.position.set(-24, 26, 0);
-    spoilerWing.castShadow = !isGhost;
-    group.add(spoilerWing);
+    const scoopGeo = new THREE.CylinderGeometry(2, 2, 8, 12);
+    scoopGeo.rotateZ(Math.PI / 2);
+    const scoop1 = new THREE.Mesh(scoopGeo, chromeMat);
+    scoop1.position.set(22, 23, -3.5);
+    group.add(scoop1);
+    const scoop2 = new THREE.Mesh(scoopGeo, chromeMat);
+    scoop2.position.set(22, 23, 3.5);
+    group.add(scoop2);
 
-    const spoilerLegGeo = new THREE.CylinderGeometry(1.5, 1.5, 10);
-    const leg1 = new THREE.Mesh(spoilerLegGeo, carMat);
-    leg1.position.set(-24, 21, -12);
-    group.add(leg1);
-    const leg2 = new THREE.Mesh(spoilerLegGeo, carMat);
-    leg2.position.set(-24, 21, 12);
-    group.add(leg2);
+    // Escapamentos laterais cromados duplos
+    const pipeGeo = new THREE.CylinderGeometry(1.8, 1.8, 30, 12);
+    pipeGeo.rotateZ(Math.PI / 2);
+    const pipeL = new THREE.Mesh(pipeGeo, chromeMat);
+    pipeL.position.set(-8, 8, -18);
+    group.add(pipeL);
+    const pipeR = new THREE.Mesh(pipeGeo, chromeMat);
+    pipeR.position.set(-8, 8, 18);
+    group.add(pipeR);
 
-    // Faróis dianteiros xenônio brilhantes
-    const lightMat = new THREE.MeshBasicMaterial({ color: "#7ee8fa" });
-    const lightGeo = new THREE.BoxGeometry(2, 5, 8);
-    const headlightL = new THREE.Mesh(lightGeo, lightMat);
-    headlightL.position.set(27, 12, -10);
-    group.add(headlightL);
-    const headlightR = new THREE.Mesh(lightGeo, lightMat);
-    headlightR.position.set(27, 12, 10);
-    group.add(headlightR);
+    // Faixa amarela de corrida central
+    const stripeGeo = new THREE.BoxGeometry(56.2, 14.2, 8);
+    const stripe = new THREE.Mesh(stripeGeo, goldMat);
+    stripe.position.y = 12;
+    group.add(stripe);
 
-    // 2. Rodas independentes com amortecedores visíveis
-    const wheelGeo = new THREE.CylinderGeometry(8, 8, 7, 24);
-    wheelGeo.rotateZ(Math.PI / 2); // Rodas no plano Z/X
+    // Aerofólio Alto Esportivo Traseiro
+    const wingGeo = new THREE.BoxGeometry(8, 3, 38);
+    const wing = new THREE.Mesh(wingGeo, bodyMat);
+    wing.position.set(-25, 28, 0);
+    wing.castShadow = !isGhost;
+    group.add(wing);
 
-    const wheelFL = new THREE.Mesh(wheelGeo, wheelMat);
-    const wheelFR = new THREE.Mesh(wheelGeo, wheelMat);
-    const wheelRL = new THREE.Mesh(wheelGeo, wheelMat);
-    const wheelRR = new THREE.Mesh(wheelGeo, wheelMat);
+    const wingPostGeo = new THREE.CylinderGeometry(1.5, 1.5, 12);
+    const wp1 = new THREE.Mesh(wingPostGeo, chromeMat);
+    wp1.position.set(-25, 22, -14);
+    group.add(wp1);
+    const wp2 = new THREE.Mesh(wingPostGeo, chromeMat);
+    wp2.position.set(-25, 22, 14);
+    group.add(wp2);
 
-    wheelFL.position.set(16, 8, -19);
-    wheelFR.position.set(16, 8, 19);
-    wheelRL.position.set(-16, 8, -19);
-    wheelRR.position.set(-16, 8, 19);
+    // Faróis dianteiros duplos com xenônio
+    const lampMat = new THREE.MeshBasicMaterial({ color: "#70a1ff" });
+    const lampGeo = new THREE.BoxGeometry(2, 4, 6);
+    const fl1 = new THREE.Mesh(lampGeo, lampMat);
+    fl1.position.set(28, 13, -11);
+    group.add(fl1);
+    const fl2 = new THREE.Mesh(lampGeo, lampMat);
+    fl2.position.set(28, 13, 11);
+    group.add(fl2);
 
+    // Lanternas de freio traseiras vermelhas
+    const brakeMat = new THREE.MeshBasicMaterial({ color: "#ff4757" });
+    const bl1 = new THREE.Mesh(lampGeo, brakeMat);
+    bl1.position.set(-28, 13, -12);
+    group.add(bl1);
+    const bl2 = new THREE.Mesh(lampGeo, brakeMat);
+    bl2.position.set(-28, 13, 12);
+    group.add(bl2);
+
+    // 2. Rodas Grandes e Pneus Off-road com Garras (estilo Marauder)
+    const wheelGeo = new THREE.CylinderGeometry(10, 10, 8, 24);
+    wheelGeo.rotateZ(Math.PI / 2);
+
+    const wheelFL = new THREE.Mesh(wheelGeo, tireMat);
+    const wheelFR = new THREE.Mesh(wheelGeo, tireMat);
+    const wheelRL = new THREE.Mesh(wheelGeo, tireMat);
+    const wheelRR = new THREE.Mesh(wheelGeo, tireMat);
+
+    wheelFL.position.set(16, 9, -20);
+    wheelFR.position.set(16, 9, 20);
+    wheelRL.position.set(-16, 9, -20);
+    wheelRR.position.set(-16, 9, 20);
+
+    // Calotas metálicas douradas
     [wheelFL, wheelFR, wheelRL, wheelRR].forEach(w => {
       w.castShadow = !isGhost;
-      // Calotas metálicas
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 7.2, 12), rimMat);
-      cap.rotation.z = Math.PI / 2;
-      w.add(cap);
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 8.2, 12), goldMat);
+      rim.rotation.z = Math.PI / 2;
+      w.add(rim);
     });
 
-    // Braços de suspensão com mola espiral vermelha
-    const springMat = new THREE.MeshStandardMaterial({ color: "#ff4757", metalness: 0.9, roughness: 0.1 });
-    const springGeo = new THREE.CylinderGeometry(2, 2, 8, 12);
+    // Amortecedores e Molas Helicoidais amarelas esportivas
+    const springMat = new THREE.MeshStandardMaterial({ color: "#fbc531", metalness: 0.9, roughness: 0.1 });
+    const springGeo = new THREE.CylinderGeometry(2.5, 2.5, 9, 12);
 
     const sFL = new THREE.Mesh(springGeo, springMat);
-    sFL.position.set(16, 12, -14);
+    sFL.position.set(16, 13, -14);
     const sFR = new THREE.Mesh(springGeo, springMat);
-    sFR.position.set(16, 12, 14);
+    sFR.position.set(16, 13, 14);
     const sRL = new THREE.Mesh(springGeo, springMat);
-    sRL.position.set(-16, 12, -14);
+    sRL.position.set(-16, 13, -14);
     const sRR = new THREE.Mesh(springGeo, springMat);
-    sRR.position.set(-16, 12, 14);
+    sRR.position.set(-16, 13, 14);
 
     group.add(wheelFL, wheelFR, wheelRL, wheelRR);
     group.add(sFL, sFR, sRL, sRR);
 
     return {
       group,
-      bodyMesh,
+      bodyMesh: chassi,
       wheels: { fl: wheelFL, fr: wheelFR, rl: wheelRL, rr: wheelRR },
       springs: { fl: sFL, fr: sFR, rl: sRL, rr: sRR }
     };
   }
 
   buildPlayerCar() {
-    const carData = this.buildCarMesh("#ff4757", false);
+    const carData = this.buildCarMesh("#eb2f06", false);
     this.carGroup = carData.group;
     this.carBody = carData.bodyMesh;
     this.carParts = carData;
     this.scene.add(this.carGroup);
 
-    // Posição inicial na reta de largada
-    this.carGroup.position.set(0, 0, -185);
+    this.carGroup.position.set(0, 0, -190);
   }
 
   buildForceVector() {
-    // Criação da Flecha 3D de Força Lateral em Neon
     this.forceVectorArrow = new THREE.Group();
 
-    // Haste brilhante da flecha
-    const shaftGeo = new THREE.CylinderGeometry(2.2, 2.2, 45, 16);
+    // Haste de energia neon
+    const shaftGeo = new THREE.CylinderGeometry(2.4, 2.4, 46, 16);
     shaftGeo.rotateX(Math.PI / 2);
-    const shaftMat = new THREE.MeshBasicMaterial({ color: "#7ee8fa" });
+    const shaftMat = new THREE.MeshBasicMaterial({ color: "#00d2d3" });
     const shaft = new THREE.Mesh(shaftGeo, shaftMat);
-    shaft.position.z = 22.5;
+    shaft.position.z = 23;
     this.forceVectorArrow.add(shaft);
 
-    // Ponta farpada da flecha (Cone afiado)
-    const tipGeo = new THREE.ConeGeometry(7, 18, 16);
+    // Ponta de flecha com brilho
+    const tipGeo = new THREE.ConeGeometry(8, 20, 16);
     tipGeo.rotateX(Math.PI / 2);
     const tip = new THREE.Mesh(tipGeo, shaftMat);
-    tip.position.z = 48;
+    tip.position.z = 50;
     this.forceVectorArrow.add(tip);
 
-    // Penas na cauda (Fletching clássico em 3D)
-    const fletchMat = new THREE.MeshBasicMaterial({ color: "#ffd23f" });
-    const featherGeo = new THREE.BoxGeometry(1.5, 10, 14);
+    // Penas da flecha (Fletching)
+    const featherGeo = new THREE.BoxGeometry(1.5, 12, 16);
+    const fletchMat = new THREE.MeshBasicMaterial({ color: "#feca57" });
     const feather = new THREE.Mesh(featherGeo, fletchMat);
-    feather.position.set(0, 0, 5);
+    feather.position.set(0, 0, 6);
     this.forceVectorArrow.add(feather);
 
-    this.forceVectorArrow.position.set(0, 16, 0);
+    this.forceVectorArrow.position.set(0, 18, 0);
     this.forceVectorArrow.visible = false;
     this.carGroup.add(this.forceVectorArrow);
   }
@@ -389,44 +497,36 @@ class Game3D {
   updatePlayerCar(physicsCar) {
     if (!this.carGroup) return;
 
-    // 1. Atualiza posição e rotação global do carro no mundo 3D
-    // Coordenadas 2D (x, y) mapeadas para o plano 3D (X, Z)
     this.carGroup.position.x = physicsCar.x;
     this.carGroup.position.z = physicsCar.z;
     this.carGroup.rotation.y = -physicsCar.angle;
 
-    // 2. SISTEMA DE AMORTECEDORES E SUSPENSÃO 3D REAL (Compressão Lateral / Roll & Pitch)
+    // Amortecedores com compressão lateral ativa
     if (this.carBody) {
-      // Body Roll (inclina na direção externa da curva com base na compressão das molas)
-      this.carBody.rotation.x = physicsCar.roll * 0.22;
-      // Body Pitch (empina aceleração / afunda dianteira)
-      this.carBody.rotation.z = -physicsCar.pitch * 0.14;
-      // Deslocamento vertical do chassi conforme compressão
-      this.carBody.position.y = 12 + Math.abs(physicsCar.roll) * 1.5 - physicsCar.pitch * 2.0;
+      this.carBody.rotation.x = physicsCar.roll * 0.24;
+      this.carBody.rotation.z = -physicsCar.pitch * 0.16;
+      this.carBody.position.y = 12 + Math.abs(physicsCar.roll) * 1.8 - physicsCar.pitch * 2.2;
 
-      // Deformação visual das molas dos amortecedores
       if (this.carParts && this.carParts.springs) {
-        this.carParts.springs.fl.scale.y = 1.0 - physicsCar.roll * 0.45;
-        this.carParts.springs.fr.scale.y = 1.0 + physicsCar.roll * 0.45;
-        this.carParts.springs.rl.scale.y = 1.0 - physicsCar.roll * 0.35 + physicsCar.pitch * 0.3;
-        this.carParts.springs.rr.scale.y = 1.0 + physicsCar.roll * 0.35 + physicsCar.pitch * 0.3;
+        this.carParts.springs.fl.scale.y = 1.0 - physicsCar.roll * 0.5;
+        this.carParts.springs.fr.scale.y = 1.0 + physicsCar.roll * 0.5;
+        this.carParts.springs.rl.scale.y = 1.0 - physicsCar.roll * 0.4 + physicsCar.pitch * 0.35;
+        this.carParts.springs.rr.scale.y = 1.0 + physicsCar.roll * 0.4 + physicsCar.pitch * 0.35;
       }
     }
 
-    // 3. Esterçamento das Rodas Dianteiras
     if (this.carParts && this.carParts.wheels) {
       this.carParts.wheels.fl.rotation.y = physicsCar.steerAngle;
       this.carParts.wheels.fr.rotation.y = physicsCar.steerAngle;
 
-      // Giro contínuo dos pneus com base na velocidade
-      const spinSpeed = physicsCar.speed * 0.12;
+      const spinSpeed = physicsCar.speed * 0.14;
       this.carParts.wheels.fl.rotation.x += spinSpeed;
       this.carParts.wheels.fr.rotation.x += spinSpeed;
       this.carParts.wheels.rl.rotation.x += spinSpeed;
       this.carParts.wheels.rr.rotation.x += spinSpeed;
     }
 
-    // 4. O Vetor Força Lateral em 3D
+    // Vetor Força Lateral
     if (physicsCar.vectorLeftActive || physicsCar.vectorRightActive) {
       this.forceVectorArrow.visible = true;
       const isLeft = physicsCar.vectorLeftActive;
@@ -436,37 +536,35 @@ class Game3D {
       this.forceVectorArrow.visible = false;
     }
 
-    // 5. Câmera acompanha o carro suavemente com visão isométrica esportiva
-    const targetCamX = this.carGroup.position.x * 0.45;
-    const targetCamZ = this.carGroup.position.z * 0.45 + 500;
+    // Câmera isométrica acompanhando o carro suavemente
+    const targetCamX = this.carGroup.position.x * 0.42;
+    const targetCamZ = this.carGroup.position.z * 0.42 + 480;
     this.camera.position.x += (targetCamX - this.camera.position.x) * 0.08;
     this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.08;
-    this.camera.lookAt(this.carGroup.position.x * 0.3, 0, this.carGroup.position.z * 0.3);
+    this.camera.lookAt(this.carGroup.position.x * 0.28, 0, this.carGroup.position.z * 0.28);
   }
 
   updateOtherCars(playersData) {
     if (!playersData) return;
 
-    // Atualiza ou cria carros de outros jogadores / bots na cena
     for (let id in playersData) {
       const p = playersData[id];
       let oCar = this.otherCars[id];
 
       if (!oCar) {
-        const carData = this.buildCarMesh(p.color || "#3867d6", false);
+        const carData = this.buildCarMesh(p.color || "#0984e3", false);
         oCar = carData;
         this.otherCars[id] = oCar;
         this.scene.add(oCar.group);
       }
 
-      // Interpolação suave de posição e rotação
       oCar.group.position.x += (p.x - oCar.group.position.x) * 0.25;
       oCar.group.position.z += (p.z - oCar.group.position.z) * 0.25;
       oCar.group.rotation.y = -p.angle;
 
       if (oCar.bodyMesh) {
-        oCar.bodyMesh.rotation.x = (p.roll || 0) * 0.22;
-        oCar.bodyMesh.rotation.z = -(p.pitch || 0) * 0.14;
+        oCar.bodyMesh.rotation.x = (p.roll || 0) * 0.24;
+        oCar.bodyMesh.rotation.z = -(p.pitch || 0) * 0.16;
       }
       if (oCar.wheels) {
         oCar.wheels.fl.rotation.y = p.steer || 0;
@@ -474,7 +572,6 @@ class Game3D {
       }
     }
 
-    // Remove jogadores que saíram
     for (let id in this.otherCars) {
       if (!playersData[id]) {
         this.scene.remove(this.otherCars[id].group);
@@ -490,7 +587,7 @@ class Game3D {
     }
 
     if (!this.ghostGroup) {
-      this.ghostGroup = this.buildCarMesh("#7ee8fa", true);
+      this.ghostGroup = this.buildCarMesh("#00d2d3", true);
       this.scene.add(this.ghostGroup.group);
     }
 
@@ -499,8 +596,8 @@ class Game3D {
     this.ghostGroup.group.rotation.y = -ghostPose.angle;
 
     if (this.ghostGroup.bodyMesh) {
-      this.ghostGroup.bodyMesh.rotation.x = (ghostPose.roll || 0) * 0.22;
-      this.ghostGroup.bodyMesh.rotation.z = -(ghostPose.pitch || 0) * 0.14;
+      this.ghostGroup.bodyMesh.rotation.x = (ghostPose.roll || 0) * 0.24;
+      this.ghostGroup.bodyMesh.rotation.z = -(ghostPose.pitch || 0) * 0.16;
     }
     if (this.ghostGroup.wheels) {
       this.ghostGroup.wheels.fl.rotation.y = ghostPose.steerAngle || 0;
