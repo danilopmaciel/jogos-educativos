@@ -2,24 +2,15 @@
    FIREBASE CONFIG & GERENCIADOR MULTIPLAYER (CORRIDA ROCK 3D)
    ========================================================================== */
 
-/**
- * INSTRUÇÕES PARA CONECTAR SEU PROJETO FIREBASE DO GOOGLE:
- * 1. Acesse https://console.firebase.google.com/
- * 2. Crie ou selecione seu projeto.
- * 3. Ative o "Realtime Database" (ou Firestore) na seção "Build/Criação" em modo de teste.
- * 4. Vá em Configurações do Projeto (ícone de engrenagem) > Geral > Seus Aplicativos > Web (</>).
- * 5. Copie os valores e cole abaixo em `firebaseConfig`.
- * 
- * *Se deixar vazio, o jogo roda automaticamente no modo de Demonstração com bots IA!
- */
 const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  databaseURL: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  projectId: "ryu2anos",
+  appId: "1:720785582808:web:8caadc0e99db70ddc3c5ad",
+  storageBucket: "ryu2anos.firebasestorage.app",
+  apiKey: "AIzaSyAKqYWSkm2nXAcxIqk-GCNj_gszg_jcUNU",
+  authDomain: "ryu2anos.firebaseapp.com",
+  databaseURL: "https://ryu2anos-default-rtdb.firebaseio.com",
+  messagingSenderId: "720785582808",
+  measurementId: "G-MWEERLE6W4"
 };
 
 class MultiplayerManager {
@@ -44,8 +35,7 @@ class MultiplayerManager {
   }
 
   initFirebase() {
-    // Verifica se as credenciais do Firebase foram preenchidas
-    if (firebaseConfig.apiKey && firebaseConfig.databaseURL && typeof firebase !== "undefined") {
+    if (firebaseConfig.apiKey && typeof firebase !== "undefined") {
       try {
         if (!firebase.apps.length) {
           this.app = firebase.initializeApp(firebaseConfig);
@@ -55,13 +45,12 @@ class MultiplayerManager {
         this.db = firebase.database();
         this.isOnline = true;
         this.isDemoMode = false;
-        console.log("Firebase conectado com sucesso!");
+        console.log("Firebase conectado com sucesso ao projeto ryu2anos!");
       } catch (err) {
-        console.warn("Falha ao inicializar Firebase. Alternando para modo Demo com Bots:", err);
+        console.warn("Realtime Database ainda não inicializado no console. Usando modo de simulação com bots inteligentes:", err);
         this.isDemoMode = true;
       }
     } else {
-      console.log("Modo Multiplayer Demo ativo (Configure o Firebase em firebase-config.js para corridas pela internet).");
       this.isDemoMode = true;
     }
   }
@@ -72,51 +61,53 @@ class MultiplayerManager {
     if (playerColor) this.playerColor = playerColor;
 
     if (this.isOnline && this.db) {
-      this.roomRef = this.db.ref(`rooms/${this.roomId}`);
-      this.playerRef = this.roomRef.child(`players/${this.playerId}`);
+      try {
+        this.roomRef = this.db.ref(`rooms/${this.roomId}`);
+        this.playerRef = this.roomRef.child(`players/${this.playerId}`);
 
-      // Registra desconexão automática
-      this.playerRef.onDisconnect().remove();
+        this.playerRef.onDisconnect().remove();
 
-      // Envia dados iniciais do jogador
-      this.playerRef.set({
-        id: this.playerId,
-        name: this.playerName,
-        color: this.playerColor,
-        x: 0,
-        z: 0,
-        angle: 0,
-        roll: 0,
-        pitch: 0,
-        steer: 0,
-        turbo: false,
-        lap: 1,
-        bestLap: 0,
-        updatedAt: firebase.database.ServerValue.TIMESTAMP
-      });
+        this.playerRef.set({
+          id: this.playerId,
+          name: this.playerName,
+          color: this.playerColor,
+          x: 0,
+          z: 0,
+          angle: 0,
+          roll: 0,
+          pitch: 0,
+          steer: 0,
+          turbo: false,
+          lap: 1,
+          bestLap: 0,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
 
-      // Escuta mudanças nos outros jogadores da sala
-      this.roomRef.child("players").on("value", snapshot => {
-        const val = snapshot.val() || {};
-        const others = {};
-        for (let id in val) {
-          if (id !== this.playerId) {
-            others[id] = val[id];
+        this.roomRef.child("players").on("value", snapshot => {
+          const val = snapshot.val() || {};
+          const others = {};
+          for (let id in val) {
+            if (id !== this.playerId) {
+              others[id] = val[id];
+            }
           }
-        }
-        this.players = others;
-        if (this.onPlayersChange) this.onPlayersChange(this.players);
-      });
+          this.players = others;
+          if (this.onPlayersChange) this.onPlayersChange(this.players);
+        });
 
-      if (this.onRoomStateChange) {
-        this.onRoomStateChange({ status: "connected", roomId: this.roomId, isDemo: false });
+        if (this.onRoomStateChange) {
+          this.onRoomStateChange({ status: "connected", roomId: this.roomId, isDemo: false });
+        }
+        return;
+      } catch(e) {
+        console.warn("Erro ao conectar à sala remota, usando bots:", e);
       }
-    } else {
-      // Modo Demo com Bots concorrentes
-      this.setupDemoBots();
-      if (this.onRoomStateChange) {
-        this.onRoomStateChange({ status: "connected", roomId: this.roomId, isDemo: true });
-      }
+    }
+
+    // Modo Demo com Bots concorrentes
+    this.setupDemoBots();
+    if (this.onRoomStateChange) {
+      this.onRoomStateChange({ status: "connected", roomId: this.roomId, isDemo: true });
     }
   }
 
@@ -172,18 +163,20 @@ class MultiplayerManager {
 
   updateMyState(state) {
     if (this.isOnline && this.playerRef) {
-      this.playerRef.update({
-        x: Number(state.x.toFixed(2)),
-        z: Number(state.z.toFixed(2)),
-        angle: Number(state.angle.toFixed(3)),
-        roll: Number(state.roll.toFixed(3)),
-        pitch: Number(state.pitch.toFixed(3)),
-        steer: Number(state.steer.toFixed(3)),
-        turbo: !!state.turbo,
-        lap: state.lap || 1,
-        bestLap: state.bestLap || 0,
-        updatedAt: firebase.database.ServerValue.TIMESTAMP
-      });
+      try {
+        this.playerRef.update({
+          x: Number(state.x.toFixed(2)),
+          z: Number(state.z.toFixed(2)),
+          angle: Number(state.angle.toFixed(3)),
+          roll: Number(state.roll.toFixed(3)),
+          pitch: Number(state.pitch.toFixed(3)),
+          steer: Number(state.steer.toFixed(3)),
+          turbo: !!state.turbo,
+          lap: state.lap || 1,
+          bestLap: state.bestLap || 0,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+      } catch(e){}
     }
   }
 
@@ -192,10 +185,8 @@ class MultiplayerManager {
 
     const others = {};
     for (let bot of this.demoBots) {
-      // Avança bot no circuito
       bot.trackT = (bot.trackT + bot.speed * delta * 0.05) % 1.0;
       
-      // Opcional turbo randômico para os bots
       if (Math.random() < 0.005 && !bot.turbo) {
         bot.turbo = true;
         bot.speed *= 1.6;

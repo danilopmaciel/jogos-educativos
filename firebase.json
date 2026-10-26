@@ -4,7 +4,12 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "*.bat",
+      "*.cmd",
+      "*.exe",
+      "*.ps1",
+      "conectar-firebase.bat"
     ],
     "headers": [
       {

@@ -11,3 +11,7 @@ _*.txt
 
 # nada de node aqui: os jogos são HTML puro, sem build
 node_modules/
+
+.firebase/
+*.bat
+
