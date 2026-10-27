@@ -290,8 +290,8 @@
 <script src="../../lib/audio.js?v=10"></script>
 <script src="../../lib/particulas.js?v=10"></script>
 <script src="../../lib/trava.js?v=10"></script>
-<script src="firebase-config.js?v=1"></script>
-<script src="game3d.js?v=1"></script>
+<script src="firebase-config.js?v=3"></script>
+<script src="game3d.js?v=3"></script>
 
 <script>
 /* ============================================================================
@@ -923,12 +923,31 @@ $("btnTurbo").addEventListener("pointercancel", () => $("btnTurbo").classList.re
    ========================================================================== */
 $("btnStart").addEventListener("click", () => {
   started = true;
-  const roomName = $("inputRoom").value || "ROCK";
-  const pilotName = $("inputPilot").value || "Piloto Rock";
+  const roomName = ($("inputRoom").value || "ROCK").toUpperCase().trim();
+  const pilotName = ($("inputPilot").value || "Piloto Rock").trim();
 
   if(selectedMode === "multi"){
-    window.multiplayerManager.joinRoom(roomName, pilotName, car.color);
-    $("multiplayerTag").textContent = "👥 Sala: " + roomName;
+    // Posiciona cada jogador em um ponto ligeiramente diferente do grid de largada e com cor própria
+    car.x = Math.round(-35 + Math.random() * 50);
+    car.z = Math.round(-255 + (Math.random() * 50 - 25));
+    car.color = window.multiplayerManager.playerColor;
+    if(game3D.carBody && game3D.carBody.material){
+      game3D.carBody.material.color.set(car.color);
+    }
+
+    window.multiplayerManager.onPlayersChange = (others) => {
+      const count = 1 + Object.keys(others || {}).length;
+      $("multiplayerTag").textContent = `🟢 Sala: ${roomName} (${count} online)`;
+      game3D.updateOtherCars(others);
+      game3D.render();
+    };
+
+    window.multiplayerManager.joinRoom(roomName, pilotName, car.color, {
+      x: car.x,
+      z: car.z,
+      angle: car.angle
+    });
+    $("multiplayerTag").textContent = `🟢 Sala: ${roomName} (1 online)`;
   }
 
   $("start").remove();

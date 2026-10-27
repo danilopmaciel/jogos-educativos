@@ -638,6 +638,34 @@ class Game3D {
     this.camera.lookAt(this.carGroup.position.x * 0.3, 0, this.carGroup.position.z * 0.3);
   }
 
+  buildNameSprite(nameText, colorHex = "#7ee8fa") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "rgba(12, 8, 30, 0.85)";
+    ctx.strokeStyle = colorHex;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 240, 48, 20);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText((nameText || "Piloto").substring(0, 14), 128, 33);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(65, 16, 1);
+    sprite.position.set(0, 44, 0);
+    return sprite;
+  }
+
   updateOtherCars(playersData) {
     if (!playersData) return;
 
@@ -646,16 +674,24 @@ class Game3D {
       let oCar = this.otherCars[id];
 
       if (!oCar) {
-        const carData = this.buildCarMesh(p.color || "#3867d6", false);
+        const carData = this.buildCarMesh(p.color || "#1e90ff", false);
+        const label = this.buildNameSprite(p.name || "Piloto", p.color || "#7ee8fa");
+        carData.group.add(label);
+        carData.group.position.set(p.x || 0, 6, p.z || -255);
+        carData.group.rotation.y = -(p.angle || 0);
         oCar = carData;
         this.otherCars[id] = oCar;
         this.scene.add(oCar.group);
       }
 
-      oCar.group.position.x += (p.x - oCar.group.position.x) * 0.25;
+      const dx = p.x - oCar.group.position.x;
+      const dz = p.z - oCar.group.position.z;
+      const moveSpeed = Math.hypot(dx, dz);
+
+      oCar.group.position.x += dx * 0.35;
       oCar.group.position.y = 6;
-      oCar.group.position.z += (p.z - oCar.group.position.z) * 0.25;
-      oCar.group.rotation.y = -p.angle;
+      oCar.group.position.z += dz * 0.35;
+      oCar.group.rotation.y = -(p.angle || 0);
 
       if (oCar.bodyMesh) {
         oCar.bodyMesh.rotation.x = (p.roll || 0) * 0.22;
@@ -664,6 +700,11 @@ class Game3D {
       if (oCar.wheels) {
         oCar.wheels.fl.rotation.y = -(p.steer || 0);
         oCar.wheels.fr.rotation.y = -(p.steer || 0);
+        const spin = Math.min(0.8, moveSpeed * 0.1);
+        oCar.wheels.fl.rotation.z += spin;
+        oCar.wheels.fr.rotation.z += spin;
+        oCar.wheels.rl.rotation.z += spin;
+        oCar.wheels.rr.rotation.z += spin;
       }
     }
 

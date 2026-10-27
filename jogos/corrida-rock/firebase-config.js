@@ -13,23 +13,34 @@ const firebaseConfig = {
   measurementId: "G-MWEERLE6W4"
 };
 
+const MP_PALETTE = [
+  "#ff4757", // Vermelho Rock
+  "#1e90ff", // Azul Elétrico
+  "#2ed573", // Verde Neon
+  "#ffa502", // Laranja Fogo
+  "#a55eea", // Roxo Sônico
+  "#00d2d3"  // Ciano Turbo
+];
+
 class MultiplayerManager {
   constructor() {
     this.isOnline = false;
     this.roomId = null;
     this.playerId = "pilot_" + Math.random().toString(36).substring(2, 8);
     this.playerName = "Piloto " + Math.floor(10 + Math.random() * 89);
-    this.playerColor = "#ff4757";
+    // Escolhe uma cor vibrante para diferenciar abas/jogadores
+    this.playerColor = MP_PALETTE[Math.floor(Math.random() * MP_PALETTE.length)];
     this.players = {}; // { id: { x, z, angle, roll, pitch, steer, turbo, color, name, lap, bestLap } }
-    this.isHost = false;
     this.app = null;
     this.db = null;
     this.roomRef = null;
     this.playerRef = null;
-    this.isDemoMode = true;
+    this.isDemoMode = false;
     this.demoBots = [];
     this.onPlayersChange = null;
     this.onRoomStateChange = null;
+    this.lastState = null;
+    this.heartbeatTimer = null;
 
     this.initFirebase();
   }
@@ -45,9 +56,9 @@ class MultiplayerManager {
         this.db = firebase.database();
         this.isOnline = true;
         this.isDemoMode = false;
-        console.log("Firebase conectado com sucesso ao projeto ryu2anos!");
+        console.log("Firebase Realtime Database conectado ao projeto ryu2anos!");
       } catch (err) {
-        console.warn("Realtime Database ainda não inicializado no console. Usando modo de simulação com bots inteligentes:", err);
+        console.warn("Erro ao inicializar Firebase, usando bots locais:", err);
         this.isDemoMode = true;
       }
     } else {
@@ -55,56 +66,95 @@ class MultiplayerManager {
     }
   }
 
-  joinRoom(roomId, playerName, playerColor) {
+  joinRoom(roomId, playerName, playerColor, initialPose) {
     this.roomId = (roomId || "ROCK").toUpperCase().trim();
-    if (playerName) this.playerName = playerName;
+    if (playerName) this.playerName = playerName.trim();
     if (playerColor) this.playerColor = playerColor;
+
+    const startX = initialPose && typeof initialPose.x === "number" ? initialPose.x : 0;
+    const startZ = initialPose && typeof initialPose.z === "number" ? initialPose.z : -255;
+    const startAngle = initialPose && typeof initialPose.angle === "number" ? initialPose.angle : 0;
+
+    this.lastState = {
+      x: startX,
+      z: startZ,
+      angle: startAngle,
+      roll: 0,
+      pitch: 0,
+      steer: 0,
+      turbo: false,
+      lap: 1,
+      bestLap: 0
+    };
 
     if (this.isOnline && this.db) {
       try {
         this.roomRef = this.db.ref(`rooms/${this.roomId}`);
         this.playerRef = this.roomRef.child(`players/${this.playerId}`);
 
+        // Remove automaticamente ao fechar a aba
         this.playerRef.onDisconnect().remove();
 
-        this.playerRef.set({
+        const initialData = {
           id: this.playerId,
           name: this.playerName,
           color: this.playerColor,
-          x: 0,
-          z: 0,
-          angle: 0,
+          x: Number(startX.toFixed(2)),
+          z: Number(startZ.toFixed(2)),
+          angle: Number(startAngle.toFixed(3)),
           roll: 0,
           pitch: 0,
           steer: 0,
           turbo: false,
           lap: 1,
           bestLap: 0,
-          updatedAt: firebase.database.ServerValue.TIMESTAMP
-        });
+          updatedAt: Date.now()
+        };
 
+        this.playerRef.set(initialData);
+
+        // Escuta todos os jogadores da sala em tempo real
         this.roomRef.child("players").on("value", snapshot => {
           const val = snapshot.val() || {};
           const others = {};
+          const now = Date.now();
+
           for (let id in val) {
-            if (id !== this.playerId) {
-              others[id] = val[id];
+            if (id === this.playerId) continue;
+            const p = val[id];
+            // Remove jogadores inativos há mais de 30s (caso uma aba tenha fechado sem onDisconnect)
+            if (p && p.updatedAt && (now - p.updatedAt > 30000)) {
+              this.roomRef.child(`players/${id}`).remove().catch(() => {});
+              continue;
             }
+            others[id] = p;
           }
+
           this.players = others;
-          if (this.onPlayersChange) this.onPlayersChange(this.players);
+          if (this.onPlayersChange) {
+            this.onPlayersChange(this.players);
+          }
         });
+
+        // Heartbeat a cada 250ms para manter sincronização mesmo com aba em segundo plano
+        if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = setInterval(() => {
+          if (this.lastState) {
+            this.updateMyState(this.lastState);
+          }
+        }, 250);
 
         if (this.onRoomStateChange) {
           this.onRoomStateChange({ status: "connected", roomId: this.roomId, isDemo: false });
         }
         return;
-      } catch(e) {
-        console.warn("Erro ao conectar à sala remota, usando bots:", e);
+      } catch (e) {
+        console.warn("Erro ao conectar à sala remota, ativando modo bots:", e);
       }
     }
 
-    // Modo Demo com Bots concorrentes
+    // Fallback: Modo Demo com Bots concorrentes
+    this.isDemoMode = true;
     this.setupDemoBots();
     if (this.onRoomStateChange) {
       this.onRoomStateChange({ status: "connected", roomId: this.roomId, isDemo: true });
@@ -119,14 +169,7 @@ class MultiplayerManager {
         color: "#3867d6",
         trackT: 0.12,
         speed: 0.52,
-        x: 0,
-        z: 0,
-        angle: 0,
-        roll: 0,
-        pitch: 0,
-        steer: 0,
-        turbo: false,
-        lap: 1
+        x: 0, z: -255, angle: 0, roll: 0, pitch: 0, steer: 0, turbo: false, lap: 1
       },
       {
         id: "bot_green_rock",
@@ -134,49 +177,30 @@ class MultiplayerManager {
         color: "#20bf6b",
         trackT: 0.35,
         speed: 0.48,
-        x: 0,
-        z: 0,
-        angle: 0,
-        roll: 0,
-        pitch: 0,
-        steer: 0,
-        turbo: false,
-        lap: 1
-      },
-      {
-        id: "bot_yellow_fire",
-        name: "🔥 Fogo Dourado",
-        color: "#fed330",
-        trackT: 0.70,
-        speed: 0.56,
-        x: 0,
-        z: 0,
-        angle: 0,
-        roll: 0,
-        pitch: 0,
-        steer: 0,
-        turbo: false,
-        lap: 1
+        x: 0, z: -255, angle: 0, roll: 0, pitch: 0, steer: 0, turbo: false, lap: 1
       }
     ];
   }
 
   updateMyState(state) {
+    this.lastState = state;
     if (this.isOnline && this.playerRef) {
       try {
         this.playerRef.update({
+          name: this.playerName,
+          color: this.playerColor,
           x: Number(state.x.toFixed(2)),
           z: Number(state.z.toFixed(2)),
           angle: Number(state.angle.toFixed(3)),
-          roll: Number(state.roll.toFixed(3)),
-          pitch: Number(state.pitch.toFixed(3)),
-          steer: Number(state.steer.toFixed(3)),
+          roll: Number((state.roll || 0).toFixed(3)),
+          pitch: Number((state.pitch || 0).toFixed(3)),
+          steer: Number((state.steer || 0).toFixed(3)),
           turbo: !!state.turbo,
           lap: state.lap || 1,
           bestLap: state.bestLap || 0,
-          updatedAt: firebase.database.ServerValue.TIMESTAMP
+          updatedAt: Date.now()
         });
-      } catch(e){}
+      } catch (e) {}
     }
   }
 
@@ -186,16 +210,6 @@ class MultiplayerManager {
     const others = {};
     for (let bot of this.demoBots) {
       bot.trackT = (bot.trackT + bot.speed * delta * 0.05) % 1.0;
-      
-      if (Math.random() < 0.005 && !bot.turbo) {
-        bot.turbo = true;
-        bot.speed *= 1.6;
-        setTimeout(() => {
-          bot.turbo = false;
-          bot.speed /= 1.6;
-        }, 1200);
-      }
-
       if (trackCenterFunc) {
         const pose = trackCenterFunc(bot.trackT);
         bot.x = pose.x;
@@ -205,26 +219,17 @@ class MultiplayerManager {
         bot.pitch = bot.turbo ? 0.6 : 0;
         bot.steer = pose.steer || 0;
       }
-
-      others[bot.id] = {
-        id: bot.id,
-        name: bot.name,
-        color: bot.color,
-        x: bot.x,
-        z: bot.z,
-        angle: bot.angle,
-        roll: bot.roll,
-        pitch: bot.pitch,
-        steer: bot.steer,
-        turbo: bot.turbo,
-        lap: bot.lap
-      };
+      others[bot.id] = { ...bot };
     }
     this.players = others;
     return this.players;
   }
 
   leaveRoom() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
     if (this.playerRef) {
       this.playerRef.remove();
       this.playerRef = null;
@@ -236,9 +241,6 @@ class MultiplayerManager {
     this.roomId = null;
     this.players = {};
     this.demoBots = [];
-    if (this.onRoomStateChange) {
-      this.onRoomStateChange({ status: "disconnected" });
-    }
   }
 }
 
