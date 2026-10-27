@@ -130,11 +130,11 @@ class Game3D {
     shape.lineTo(-halfW, -halfH + r);
     shape.absarc(-halfW + r, -halfH + r, r, Math.PI, Math.PI * 1.5, false);
 
-    // Ilha interna (furo)
+    // Ilha interna (furo concêntrico perfeito)
     const hole = new THREE.Path();
     const iw = halfW - roadWidth;
     const ih = halfH - roadWidth;
-    const ir = Math.max(30, r - roadWidth * 0.85);
+    const ir = r - roadWidth; // Raio concêntrico perfeito = 30
 
     hole.moveTo(-iw + ir, -ih);
     hole.lineTo(iw - ir, -ih);
@@ -197,9 +197,13 @@ class Game3D {
 
     const halfW = w / 2;
     const halfH = h / 2;
+    const left = -halfW + r;
+    const right = halfW - r;
+    const top = -halfH + r;
+    const bottom = halfH - r;
 
-    // 1. Retas horizontais externas
-    for (let x = -halfW + r; x <= halfW - r; x += 18) {
+    // 1. Zebras Externas: Retas
+    for (let x = left; x <= right; x += 18) {
       const mat = (Math.floor(x / 18) % 2 === 0) ? redMat : whiteMat;
       const topC = new THREE.Mesh(blockGeo, mat);
       topC.position.set(x, 4.5, -halfH - 2);
@@ -212,8 +216,7 @@ class Game3D {
       this.scene.add(botC);
     }
 
-    // 2. Retas verticais externas (com rotação de 90 graus)
-    for (let z = -halfH + r; z <= halfH - r; z += 18) {
+    for (let z = top; z <= bottom; z += 18) {
       const mat = (Math.floor(z / 18) % 2 === 0) ? redMat : whiteMat;
       const leftC = new THREE.Mesh(blockGeo, mat);
       leftC.rotation.y = Math.PI / 2;
@@ -228,9 +231,32 @@ class Game3D {
       this.scene.add(rightC);
     }
 
-    // 3. Zebras internas contínuas
+    // 2. Zebras Externas: 4 Cantos Arredondados
+    const cornerSteps = 12;
+    const cornerArcs = [
+      { cx: right, cz: top, aStart: -Math.PI / 2, aEnd: 0 },
+      { cx: right, cz: bottom, aStart: 0, aEnd: Math.PI / 2 },
+      { cx: left, cz: bottom, aStart: Math.PI / 2, aEnd: Math.PI },
+      { cx: left, cz: top, aStart: Math.PI, aEnd: Math.PI * 1.5 }
+    ];
+
+    cornerArcs.forEach(c => {
+      for (let i = 0; i < cornerSteps; i++) {
+        const phi = c.aStart + (i / cornerSteps) * (c.aEnd - c.aStart);
+        const bx = c.cx + (r + 2) * Math.cos(phi);
+        const bz = c.cz + (r + 2) * Math.sin(phi);
+        const mesh = new THREE.Mesh(blockGeo, (i % 2 === 0) ? redMat : whiteMat);
+        mesh.position.set(bx, 4.5, bz);
+        mesh.rotation.y = -phi;
+        mesh.castShadow = true;
+        this.scene.add(mesh);
+      }
+    });
+
+    // 3. Zebras Internas: Retas e Curvas Concêntricas
     const iw = halfW - roadWidth;
     const ih = halfH - roadWidth;
+
     for (let x = -iw + ir; x <= iw - ir; x += 18) {
       const mat = (Math.floor(x / 18) % 2 === 0) ? redMat : whiteMat;
       const inTop = new THREE.Mesh(blockGeo, mat);
@@ -243,6 +269,21 @@ class Game3D {
       inBot.castShadow = true;
       this.scene.add(inBot);
     }
+
+    for (let z = -ih + ir; z <= ih - ir; z += 18) {
+      const mat = (Math.floor(z / 18) % 2 === 0) ? redMat : whiteMat;
+      const inLeft = new THREE.Mesh(blockGeo, mat);
+      inLeft.rotation.y = Math.PI / 2;
+      inLeft.position.set(-iw + 2, 4.5, z);
+      inLeft.castShadow = true;
+      this.scene.add(inLeft);
+
+      const inRight = new THREE.Mesh(blockGeo, (Math.floor(z / 18) % 2 === 0) ? whiteMat : redMat);
+      inRight.rotation.y = Math.PI / 2;
+      inRight.position.set(iw - 2, 4.5, z);
+      inRight.castShadow = true;
+      this.scene.add(inRight);
+    }
   }
 
   buildSNESGantry(halfW, halfH, roadWidth) {
@@ -250,34 +291,40 @@ class Game3D {
     const trussMat = new THREE.MeshStandardMaterial({ color: "#ffd23f", metalness: 0.8, roughness: 0.25 });
     const colGeo = new THREE.CylinderGeometry(5, 5, 130, 12);
 
+    // Postes afastados 25px para fora do asfalto para não haver colisão ou obstrução visual da passagem
+    const postOuterZ = -halfH - 25;
+    const postInnerZ = -(halfH - roadWidth) + 25;
+
     const post1 = new THREE.Mesh(colGeo, trussMat);
-    post1.position.set(0, 65, -halfH);
+    post1.position.set(0, 65, postOuterZ);
     post1.castShadow = true;
     gantry.add(post1);
 
     const post2 = new THREE.Mesh(colGeo, trussMat);
-    post2.position.set(0, 65, -halfH + roadWidth);
+    post2.position.set(0, 65, postInnerZ);
     post2.castShadow = true;
     gantry.add(post2);
 
-    const beamGeo = new THREE.BoxGeometry(14, 14, roadWidth + 12);
+    const beamLen = Math.abs(postOuterZ - postInnerZ) + 16;
+    const beamGeo = new THREE.BoxGeometry(14, 14, beamLen);
     const beam = new THREE.Mesh(beamGeo, trussMat);
-    beam.position.set(0, 120, -halfH + roadWidth / 2);
+    beam.position.set(0, 120, (postOuterZ + postInnerZ) / 2);
     beam.castShadow = true;
     gantry.add(beam);
 
-    // Semáforo com luzes neon de largada
+    // Semáforo com luzes neon de largada no centro da via
+    const roadCenterZ = -halfH + roadWidth / 2;
     const lampGeo = new THREE.SphereGeometry(4.5, 16, 16);
     const redLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#ff4757" }));
-    redLight.position.set(8, 120, -halfH + roadWidth / 2 - 24);
+    redLight.position.set(8, 120, roadCenterZ - 24);
     gantry.add(redLight);
 
     const yellowLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#ffa502" }));
-    yellowLight.position.set(8, 120, -halfH + roadWidth / 2);
+    yellowLight.position.set(8, 120, roadCenterZ);
     gantry.add(yellowLight);
 
     const greenLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#2ed573" }));
-    greenLight.position.set(8, 120, -halfH + roadWidth / 2 + 24);
+    greenLight.position.set(8, 120, roadCenterZ + 24);
     gantry.add(greenLight);
 
     // Linha de chegada quadriculada no chão
@@ -531,8 +578,9 @@ class Game3D {
 
     // Rodas com esterçamento dianteiro e rotação ao longo de Z (giro para frente do pneu)
     if (this.carParts && this.carParts.wheels) {
-      this.carParts.wheels.fl.rotation.y = physicsCar.steerAngle;
-      this.carParts.wheels.fr.rotation.y = physicsCar.steerAngle;
+      // Invertemos o sinal para esterçar corretamente de acordo com o referencial Three.js
+      this.carParts.wheels.fl.rotation.y = -physicsCar.steerAngle;
+      this.carParts.wheels.fr.rotation.y = -physicsCar.steerAngle;
 
       const spinSpeed = physicsCar.speed * 0.14;
       this.carParts.wheels.fl.rotation.z += spinSpeed;
@@ -585,8 +633,8 @@ class Game3D {
         oCar.bodyMesh.rotation.z = -(p.pitch || 0) * 0.14;
       }
       if (oCar.wheels) {
-        oCar.wheels.fl.rotation.y = p.steer || 0;
-        oCar.wheels.fr.rotation.y = p.steer || 0;
+        oCar.wheels.fl.rotation.y = -(p.steer || 0);
+        oCar.wheels.fr.rotation.y = -(p.steer || 0);
       }
     }
 
@@ -618,8 +666,8 @@ class Game3D {
       this.ghostGroup.bodyMesh.rotation.z = -(ghostPose.pitch || 0) * 0.14;
     }
     if (this.ghostGroup.wheels) {
-      this.ghostGroup.wheels.fl.rotation.y = ghostPose.steerAngle || 0;
-      this.ghostGroup.wheels.fr.rotation.y = ghostPose.steerAngle || 0;
+      this.ghostGroup.wheels.fl.rotation.y = -(ghostPose.steerAngle || 0);
+      this.ghostGroup.wheels.fr.rotation.y = -(ghostPose.steerAngle || 0);
     }
   }
 

@@ -388,7 +388,7 @@ function sLapFanfare(){
    ========================================================================== */
 const car = {
   x: 0,
-  z: -185,
+  z: -325, // Centro da pista reta superior (-halfH + roadWidth/2)
   angle: 0, // 0 = apontando para a direita no eixo X
   speed: 0,
   baseSpeed: 5.5,
@@ -465,32 +465,22 @@ function activateTurbo(){
 }
 
 /* ============================================================================
-   GEOMETRIA E LINHA MàëDIA DO CIRCUITO 3D
+   GEOMETRIA E LINHA MÉDIA DO CIRCUITO 3D (TRANSIÇÃO CONTÍNUA SEM ENROSCAR)
    ========================================================================== */
 function getTrack3DPoint(px, pz){
   const t = game3D.trackDimensions;
   const halfW = t.w / 2;
   const halfH = t.h / 2;
+  const left = -halfW + t.r;
+  const right = halfW - t.r;
+  const top = -halfH + t.r;
+  const bottom = halfH - t.r;
   const midR = t.r - t.roadWidth / 2;
-  const midW = t.w - t.roadWidth;
-  const midH = t.h - t.roadWidth;
 
-  const left = -halfW + t.roadWidth / 2 + midR;
-  const right = halfW - t.roadWidth / 2 - midR;
-  const top = -halfH + t.roadWidth / 2 + midR;
-  const bottom = halfH - t.roadWidth / 2 - midR;
+  let cx = px, cz = pz, forwardAngle = 0;
 
-  let cx = px;
-  let cz = pz;
-  let forwardAngle = 0;
-
-  // 1. Quatro cantos arredondados
-  if(px < left && pz < top){
-    const ang = Math.atan2(pz - top, px - left);
-    cx = left + midR * Math.cos(ang);
-    cz = top + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2;
-  } else if(px > right && pz < top){
+  // 1. Quatro quadrantes de curvas nos cantos (raios circulares perfeitos)
+  if(px > right && pz < top){
     const ang = Math.atan2(pz - top, px - right);
     cx = right + midR * Math.cos(ang);
     cz = top + midR * Math.sin(ang);
@@ -505,77 +495,101 @@ function getTrack3DPoint(px, pz){
     cx = left + midR * Math.cos(ang);
     cz = bottom + midR * Math.sin(ang);
     forwardAngle = ang + Math.PI / 2;
+  } else if(px < left && pz < top){
+    const ang = Math.atan2(pz - top, px - left);
+    cx = left + midR * Math.cos(ang);
+    cz = top + midR * Math.sin(ang);
+    forwardAngle = ang + Math.PI / 2;
+  }
+  // 2. Quatro retas de conexão contínuas
+  else if(pz <= top){
+    cx = Math.max(left, Math.min(right, px));
+    cz = -halfH + t.roadWidth / 2;
+    forwardAngle = 0; // Indo para +X
+  } else if(px >= right){
+    cx = halfW - t.roadWidth / 2;
+    cz = Math.max(top, Math.min(bottom, pz));
+    forwardAngle = Math.PI / 2; // Indo para +Z
+  } else if(pz >= bottom){
+    cx = Math.max(left, Math.min(right, px));
+    cz = halfH - t.roadWidth / 2;
+    forwardAngle = Math.PI; // Indo para -X
   } else {
-    // Retas
-    const midTopZ = -halfH + t.roadWidth / 2;
-    const midBottomZ = halfH - t.roadWidth / 2;
-    const midLeftX = -halfW + t.roadWidth / 2;
-    const midRightX = halfW - t.roadWidth / 2;
-
-    const dTop = Math.abs(pz - midTopZ);
-    const dBottom = Math.abs(pz - midBottomZ);
-    const dLeft = Math.abs(px - midLeftX);
-    const dRight = Math.abs(px - midRightX);
-    const minD = Math.min(dTop, dBottom, dLeft, dRight);
-
-    if(minD === dTop){
-      cx = Math.max(left, Math.min(right, px));
-      cz = midTopZ;
-      forwardAngle = 0; // Indo para +X
-    } else if(minD === dRight){
-      cx = midRightX;
-      cz = Math.max(top, Math.min(bottom, pz));
-      forwardAngle = Math.PI / 2; // Indo para +Z
-    } else if(minD === dBottom){
-      cx = Math.max(left, Math.min(right, px));
-      cz = midBottomZ;
-      forwardAngle = Math.PI; // Indo para -X
-    } else {
-      cx = midLeftX;
-      cz = Math.max(top, Math.min(bottom, pz));
-      forwardAngle = -Math.PI / 2; // Indo para -Z
-    }
+    cx = -halfW + t.roadWidth / 2;
+    cz = Math.max(top, Math.min(bottom, pz));
+    forwardAngle = -Math.PI / 2; // Indo para -Z
   }
 
   const dist = Math.hypot(px - cx, pz - cz);
   return { cx, cz, dist, forwardAngle };
 }
 
-/* Ponto paramétrico para bots no circuito */
+/* Ponto paramétrico contínuo para bots no circuito */
 function getBotPoseAtT(progressT){
   const t = game3D.trackDimensions;
-  const perimeter = 2 * (t.w - t.roadWidth + t.h - t.roadWidth);
-  const dist = progressT * perimeter;
-  const halfW = t.w / 2 - t.roadWidth / 2;
-  const halfH = t.h / 2 - t.roadWidth / 2;
+  const halfW = t.w / 2;
+  const halfH = t.h / 2;
+  const left = -halfW + t.r;
+  const right = halfW - t.r;
+  const top = -halfH + t.r;
+  const bottom = halfH - t.r;
+  const midR = t.r - t.roadWidth / 2;
 
-  let x = 0, z = -halfH, angle = 0, steer = 0;
-  const topLen = halfW * 2;
-  const rightLen = halfH * 2;
+  const topLen = right - left;
+  const cornerLen = 0.5 * Math.PI * midR;
+  const rightLen = bottom - top;
+  const bottomLen = topLen;
+  const leftLen = rightLen;
+  const perimeter = topLen * 2 + rightLen * 2 + 4 * cornerLen;
 
-  if (dist < topLen) {
-    x = -halfW + dist;
-    z = -halfH;
+  let dist = (progressT % 1.0) * perimeter;
+  if(dist < 0) dist += perimeter;
+
+  let x = 0, z = 0, angle = 0;
+
+  if(dist < topLen){
+    x = left + dist;
+    z = -halfH + t.roadWidth / 2;
     angle = 0;
-  } else if (dist < topLen + rightLen) {
-    x = halfW;
-    z = -halfH + (dist - topLen);
+  } else if(dist < topLen + cornerLen){
+    const phi = -Math.PI / 2 + ((dist - topLen) / cornerLen) * (Math.PI / 2);
+    x = right + midR * Math.cos(phi);
+    z = top + midR * Math.sin(phi);
+    angle = phi + Math.PI / 2;
+  } else if(dist < topLen + cornerLen + rightLen){
+    x = halfW - t.roadWidth / 2;
+    z = top + (dist - (topLen + cornerLen));
     angle = Math.PI / 2;
-  } else if (dist < topLen * 2 + rightLen) {
-    x = halfW - (dist - (topLen + rightLen));
-    z = halfH;
+  } else if(dist < topLen + cornerLen * 2 + rightLen){
+    const phi = 0 + ((dist - (topLen + cornerLen + rightLen)) / cornerLen) * (Math.PI / 2);
+    x = right + midR * Math.cos(phi);
+    z = bottom + midR * Math.sin(phi);
+    angle = phi + Math.PI / 2;
+  } else if(dist < topLen * 2 + cornerLen * 2 + rightLen){
+    x = right - (dist - (topLen + cornerLen * 2 + rightLen));
+    z = halfH - t.roadWidth / 2;
     angle = Math.PI;
-  } else {
-    x = -halfW;
-    z = halfH - (dist - (topLen * 2 + rightLen));
+  } else if(dist < topLen * 2 + cornerLen * 3 + rightLen){
+    const phi = Math.PI / 2 + ((dist - (topLen * 2 + cornerLen * 2 + rightLen)) / cornerLen) * (Math.PI / 2);
+    x = left + midR * Math.cos(phi);
+    z = bottom + midR * Math.sin(phi);
+    angle = phi + Math.PI / 2;
+  } else if(dist < topLen * 2 + cornerLen * 3 + rightLen * 2){
+    x = -halfW + t.roadWidth / 2;
+    z = bottom - (dist - (topLen * 2 + cornerLen * 3 + rightLen));
     angle = -Math.PI / 2;
+  } else {
+    const phi = Math.PI + ((dist - (topLen * 2 + cornerLen * 3 + rightLen * 2)) / cornerLen) * (Math.PI / 2);
+    x = left + midR * Math.cos(phi);
+    z = top + midR * Math.sin(phi);
+    angle = phi + Math.PI / 2;
   }
 
-  return { x, z, angle, steer, roll: Math.sin(progressT * Math.PI * 4) * 0.4 };
+  return { x, z, angle, steer: 0, roll: Math.sin(progressT * Math.PI * 4) * 0.4 };
 }
 
 /* ============================================================================
-   LOOP DE FÍSICA E ATUALIZAàçàâO
+   LOOP DE FÍSICA E ATUALIZAÇÃO
    ========================================================================== */
 let lastMultiplayerSend = 0;
 
@@ -646,8 +660,9 @@ function updatePhysics(){
     let diffAngle = trackInfo.forwardAngle - car.angle;
     while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
     while(diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-    car.angle += diffAngle * 0.45;
-    car.speed *= 0.82;
+    // Desliza suavemente pela zebra sem engasgar nem travar
+    car.angle += diffAngle * 0.20;
+    car.speed = Math.max(car.speed * 0.94, 1.2);
   }
 
   // 6. Gravação de telemetria da volta (Fantasma)
