@@ -465,63 +465,120 @@ function activateTurbo(){
 }
 
 /* ============================================================================
-   GEOMETRIA E LINHA MÉDIA DO CIRCUITO 3D (TRANSIÇÃO CONTÍNUA SEM ENROSCAR)
+   GEOMETRIA E LINHA MÉDIA DO CIRCUITO 3D (PROJEÇÃO PROXIMAL SEM TELEPORTE)
    ========================================================================== */
 function getTrack3DPoint(px, pz){
   const t = game3D.trackDimensions;
   const halfW = t.w / 2;
   const halfH = t.h / 2;
-  const left = -halfW + t.r;
-  const right = halfW - t.r;
-  const top = -halfH + t.r;
-  const bottom = halfH - t.r;
-  const midR = t.r - t.roadWidth / 2;
+  const left = -halfW + t.r; // -490
+  const right = halfW - t.r; // 490
+  const top = -halfH + t.r; // -180
+  const bottom = halfH - t.r; // 180
+  const midR = t.r - t.roadWidth / 2; // 145
 
-  let cx = px, cz = pz, forwardAngle = 0;
+  const candidates = [];
 
-  // 1. Quatro quadrantes de curvas nos cantos (raios circulares perfeitos)
-  if(px > right && pz < top){
-    const ang = Math.atan2(pz - top, px - right);
-    cx = right + midR * Math.cos(ang);
-    cz = top + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2;
-  } else if(px > right && pz > bottom){
-    const ang = Math.atan2(pz - bottom, px - right);
-    cx = right + midR * Math.cos(ang);
-    cz = bottom + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2;
-  } else if(px < left && pz > bottom){
-    const ang = Math.atan2(pz - bottom, px - left);
-    cx = left + midR * Math.cos(ang);
-    cz = bottom + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2;
-  } else if(px < left && pz < top){
-    const ang = Math.atan2(pz - top, px - left);
-    cx = left + midR * Math.cos(ang);
-    cz = top + midR * Math.sin(ang);
-    forwardAngle = ang + Math.PI / 2;
+  // 1. Reta Superior: de (left, -325) até (right, -325), fluxo para +X (angle = 0)
+  const topX = Math.max(left, Math.min(right, px));
+  const topZ = -halfH + t.roadWidth / 2;
+  candidates.push({
+    cx: topX, cz: topZ,
+    distSq: (px - topX) ** 2 + (pz - topZ) ** 2,
+    forwardAngle: 0
+  });
+
+  // 2. Reta Inferior: de (right, 325) até (left, 325), fluxo para -X (angle = PI)
+  const botX = Math.max(left, Math.min(right, px));
+  const botZ = halfH - t.roadWidth / 2;
+  candidates.push({
+    cx: botX, cz: botZ,
+    distSq: (px - botX) ** 2 + (pz - botZ) ** 2,
+    forwardAngle: Math.PI
+  });
+
+  // 3. Reta Direita: de (635, top) até (635, bottom), fluxo para +Z (angle = PI/2)
+  const rightX = halfW - t.roadWidth / 2;
+  const rightZ = Math.max(top, Math.min(bottom, pz));
+  candidates.push({
+    cx: rightX, cz: rightZ,
+    distSq: (px - rightX) ** 2 + (pz - rightZ) ** 2,
+    forwardAngle: Math.PI / 2
+  });
+
+  // 4. Reta Esquerda: de (-635, bottom) até (-635, top), fluxo para -Z (angle = -PI/2)
+  const leftX = -halfW + t.roadWidth / 2;
+  const leftZ = Math.max(top, Math.min(bottom, pz));
+  candidates.push({
+    cx: leftX, cz: leftZ,
+    distSq: (px - leftX) ** 2 + (pz - leftZ) ** 2,
+    forwardAngle: -Math.PI / 2
+  });
+
+  // 5. Arco Superior-Direito: centro (right, top), ângulo [-PI/2, 0]
+  let aTR = Math.atan2(pz - top, px - right);
+  if (aTR < -Math.PI / 2) aTR = -Math.PI / 2;
+  if (aTR > 0) aTR = 0;
+  const trX = right + midR * Math.cos(aTR);
+  const trZ = top + midR * Math.sin(aTR);
+  candidates.push({
+    cx: trX, cz: trZ,
+    distSq: (px - trX) ** 2 + (pz - trZ) ** 2,
+    forwardAngle: aTR + Math.PI / 2
+  });
+
+  // 6. Arco Inferior-Direito: centro (right, bottom), ângulo [0, PI/2]
+  let aBR = Math.atan2(pz - bottom, px - right);
+  if (aBR < 0) aBR = 0;
+  if (aBR > Math.PI / 2) aBR = Math.PI / 2;
+  const brX = right + midR * Math.cos(aBR);
+  const brZ = bottom + midR * Math.sin(aBR);
+  candidates.push({
+    cx: brX, cz: brZ,
+    distSq: (px - brX) ** 2 + (pz - brZ) ** 2,
+    forwardAngle: aBR + Math.PI / 2
+  });
+
+  // 7. Arco Inferior-Esquerdo: centro (left, bottom), ângulo [PI/2, PI]
+  let aBL = Math.atan2(pz - bottom, px - left);
+  if (aBL < 0) aBL += Math.PI * 2;
+  if (aBL < Math.PI / 2) aBL = Math.PI / 2;
+  if (aBL > Math.PI) aBL = Math.PI;
+  const blX = left + midR * Math.cos(aBL);
+  const blZ = bottom + midR * Math.sin(aBL);
+  candidates.push({
+    cx: blX, cz: blZ,
+    distSq: (px - blX) ** 2 + (pz - blZ) ** 2,
+    forwardAngle: aBL + Math.PI / 2
+  });
+
+  // 8. Arco Superior-Esquerdo: centro (left, top), ângulo [PI, 3*PI/2] / [-PI, -PI/2]
+  let aTL = Math.atan2(pz - top, px - left);
+  if (aTL > 0) aTL = -Math.PI;
+  if (aTL < -Math.PI) aTL = -Math.PI;
+  if (aTL > -Math.PI / 2) aTL = -Math.PI / 2;
+  const tlX = left + midR * Math.cos(aTL);
+  const tlZ = top + midR * Math.sin(aTL);
+  candidates.push({
+    cx: tlX, cz: tlZ,
+    distSq: (px - tlX) ** 2 + (pz - tlZ) ** 2,
+    forwardAngle: aTL + Math.PI / 2
+  });
+
+  // Escolhe estritamente o segmento de pista mais próximo do carro
+  let best = candidates[0];
+  for (let i = 1; i < candidates.length; i++) {
+    if (candidates[i].distSq < best.distSq) {
+      best = candidates[i];
+    }
   }
-  // 2. Quatro retas de conexão contínuas
-  else if(pz <= top){
-    cx = Math.max(left, Math.min(right, px));
-    cz = -halfH + t.roadWidth / 2;
-    forwardAngle = 0; // Indo para +X
-  } else if(px >= right){
-    cx = halfW - t.roadWidth / 2;
-    cz = Math.max(top, Math.min(bottom, pz));
-    forwardAngle = Math.PI / 2; // Indo para +Z
-  } else if(pz >= bottom){
-    cx = Math.max(left, Math.min(right, px));
-    cz = halfH - t.roadWidth / 2;
-    forwardAngle = Math.PI; // Indo para -X
-  } else {
-    cx = -halfW + t.roadWidth / 2;
-    cz = Math.max(top, Math.min(bottom, pz));
-    forwardAngle = -Math.PI / 2; // Indo para -Z
-  }
 
-  const dist = Math.hypot(px - cx, pz - cz);
-  return { cx, cz, dist, forwardAngle };
+  return {
+    cx: best.cx,
+    cz: best.cz,
+    dist: Math.sqrt(best.distSq),
+    forwardAngle: best.forwardAngle
+  };
 }
 
 /* Ponto paramétrico contínuo para bots no circuito */
