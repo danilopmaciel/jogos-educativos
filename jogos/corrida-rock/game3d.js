@@ -108,10 +108,10 @@ class Game3D {
   }
 
   buildTrack() {
-    const w = 860;
-    const h = 620;
-    const roadWidth = 230; // Pista bem espaçosa
-    const r = 160;
+    const w = 1040;
+    const h = 720;
+    const roadWidth = 210; // Pista espaçosa e concêntrica
+    const r = 260; // r > roadWidth garante raio interno positivo (ir = 50 > 0)!
 
     this.trackDimensions = { w, h, roadWidth, r };
 
@@ -130,11 +130,11 @@ class Game3D {
     shape.lineTo(-halfW, -halfH + r);
     shape.absarc(-halfW + r, -halfH + r, r, Math.PI, Math.PI * 1.5, false);
 
-    // Ilha interna (furo concêntrico perfeito)
+    // Ilha interna (furo concêntrico perfeito com ir = r - roadWidth = 50 > 0)
     const hole = new THREE.Path();
     const iw = halfW - roadWidth;
     const ih = halfH - roadWidth;
-    const ir = r - roadWidth; // Raio concêntrico perfeito = 30
+    const ir = r - roadWidth; // +50 (positivo! Evita inversão dos cantos!)
 
     hole.moveTo(-iw + ir, -ih);
     hole.lineTo(iw - ir, -ih);
@@ -181,11 +181,11 @@ class Game3D {
 
     for (let x = -halfW + roadWidth; x <= halfW - roadWidth; x += 36) {
       const d1 = new THREE.Mesh(dashGeo, lineMat);
-      d1.position.set(x, 4.3, midTopZ);
+      d1.position.set(x, 6.2, midTopZ);
       this.scene.add(d1);
 
       const d2 = new THREE.Mesh(dashGeo, lineMat);
-      d2.position.set(x, 4.3, midBottomZ);
+      d2.position.set(x, 6.2, midBottomZ);
       this.scene.add(d2);
     }
   }
@@ -206,12 +206,12 @@ class Game3D {
     for (let x = left; x <= right; x += 18) {
       const mat = (Math.floor(x / 18) % 2 === 0) ? redMat : whiteMat;
       const topC = new THREE.Mesh(blockGeo, mat);
-      topC.position.set(x, 4.5, -halfH - 2);
+      topC.position.set(x, 6.2, -halfH - 2);
       topC.castShadow = true;
       this.scene.add(topC);
 
       const botC = new THREE.Mesh(blockGeo, (Math.floor(x / 18) % 2 === 0) ? whiteMat : redMat);
-      botC.position.set(x, 4.5, halfH + 2);
+      botC.position.set(x, 6.2, halfH + 2);
       botC.castShadow = true;
       this.scene.add(botC);
     }
@@ -220,19 +220,19 @@ class Game3D {
       const mat = (Math.floor(z / 18) % 2 === 0) ? redMat : whiteMat;
       const leftC = new THREE.Mesh(blockGeo, mat);
       leftC.rotation.y = Math.PI / 2;
-      leftC.position.set(-halfW - 2, 4.5, z);
+      leftC.position.set(-halfW - 2, 6.2, z);
       leftC.castShadow = true;
       this.scene.add(leftC);
 
       const rightC = new THREE.Mesh(blockGeo, (Math.floor(z / 18) % 2 === 0) ? whiteMat : redMat);
       rightC.rotation.y = Math.PI / 2;
-      rightC.position.set(halfW + 2, 4.5, z);
+      rightC.position.set(halfW + 2, 6.2, z);
       rightC.castShadow = true;
       this.scene.add(rightC);
     }
 
     // 2. Zebras Externas: 4 Cantos Arredondados
-    const cornerSteps = 12;
+    const cornerSteps = 14;
     const cornerArcs = [
       { cx: right, cz: top, aStart: -Math.PI / 2, aEnd: 0 },
       { cx: right, cz: bottom, aStart: 0, aEnd: Math.PI / 2 },
@@ -242,53 +242,54 @@ class Game3D {
 
     cornerArcs.forEach(c => {
       for (let i = 0; i < cornerSteps; i++) {
-        const phi = c.aStart + (i / cornerSteps) * (c.aEnd - c.aStart);
+        const phi = c.aStart + ((i + 0.5) / cornerSteps) * (c.aEnd - c.aStart);
         const bx = c.cx + (r + 2) * Math.cos(phi);
         const bz = c.cz + (r + 2) * Math.sin(phi);
         const mesh = new THREE.Mesh(blockGeo, (i % 2 === 0) ? redMat : whiteMat);
-        mesh.position.set(bx, 4.5, bz);
-        mesh.rotation.y = -phi;
+        mesh.position.set(bx, 6.2, bz);
+        // Alinhado com a tangente do arco (phi + PI/2): rotation.y = -(phi + Math.PI / 2)
+        mesh.rotation.y = -phi - Math.PI / 2;
         mesh.castShadow = true;
         this.scene.add(mesh);
       }
     });
 
-    // 3. Zebras Internas: Retas e Curvas Arredondadas (sem cantos em cruz!)
-    const iw = halfW - roadWidth; // 520
-    const ih = halfH - roadWidth; // 210
+    // 3. Zebras Internas: Retas e Curvas Arredondadas Concêntricas (ir = 50 > 0)
+    const iw = halfW - roadWidth;
+    const ih = halfH - roadWidth;
 
     // Retas horizontais internas (entre os arcos dos cantos)
-    for (let x = -iw + ir; x <= iw - ir; x += 18) {
+    for (let x = -iw + ir + 8; x <= iw - ir - 8; x += 18) {
       const mat = (Math.floor(x / 18) % 2 === 0) ? redMat : whiteMat;
       const inTop = new THREE.Mesh(blockGeo, mat);
-      inTop.position.set(x, 4.5, -ih);
+      inTop.position.set(x, 6.2, -ih);
       inTop.castShadow = true;
       this.scene.add(inTop);
 
       const inBot = new THREE.Mesh(blockGeo, (Math.floor(x / 18) % 2 === 0) ? whiteMat : redMat);
-      inBot.position.set(x, 4.5, ih);
+      inBot.position.set(x, 6.2, ih);
       inBot.castShadow = true;
       this.scene.add(inBot);
     }
 
     // Retas verticais internas (entre os arcos dos cantos)
-    for (let z = -ih + ir; z <= ih - ir; z += 18) {
+    for (let z = -ih + ir + 8; z <= ih - ir - 8; z += 18) {
       const mat = (Math.floor(z / 18) % 2 === 0) ? redMat : whiteMat;
       const inLeft = new THREE.Mesh(blockGeo, mat);
       inLeft.rotation.y = Math.PI / 2;
-      inLeft.position.set(-iw, 4.5, z);
+      inLeft.position.set(-iw, 6.2, z);
       inLeft.castShadow = true;
       this.scene.add(inLeft);
 
       const inRight = new THREE.Mesh(blockGeo, (Math.floor(z / 18) % 2 === 0) ? whiteMat : redMat);
       inRight.rotation.y = Math.PI / 2;
-      inRight.position.set(iw, 4.5, z);
+      inRight.position.set(iw, 6.2, z);
       inRight.castShadow = true;
       this.scene.add(inRight);
     }
 
-    // Curvas nos 4 cantos internos (contornando o furo suavemente sem cruzar)
-    const innerCornerSteps = 6;
+    // Curvas nos 4 cantos internos (contornando o furo suavemente na tangente)
+    const innerCornerSteps = 5;
     const innerCornerArcs = [
       { cx: iw - ir, cz: -ih + ir, aStart: -Math.PI / 2, aEnd: 0 },
       { cx: iw - ir, cz: ih - ir, aStart: 0, aEnd: Math.PI / 2 },
@@ -298,12 +299,13 @@ class Game3D {
 
     innerCornerArcs.forEach(c => {
       for (let i = 0; i < innerCornerSteps; i++) {
-        const phi = c.aStart + (i / innerCornerSteps) * (c.aEnd - c.aStart);
+        const phi = c.aStart + ((i + 0.5) / innerCornerSteps) * (c.aEnd - c.aStart);
         const bx = c.cx + ir * Math.cos(phi);
         const bz = c.cz + ir * Math.sin(phi);
         const mesh = new THREE.Mesh(blockGeo, (i % 2 === 0) ? redMat : whiteMat);
-        mesh.position.set(bx, 4.5, bz);
-        mesh.rotation.y = -phi;
+        mesh.position.set(bx, 6.2, bz);
+        // Alinhado com a tangente do arco interno: rotation.y = -(phi + Math.PI / 2)
+        mesh.rotation.y = -phi - Math.PI / 2;
         mesh.castShadow = true;
         this.scene.add(mesh);
       }
@@ -362,7 +364,7 @@ class Game3D {
       for (let c = 0; c < cols; c++) {
         const tile = new THREE.Mesh(tileGeo, (r + c) % 2 === 0 ? matW : matB);
         tile.rotation.x = -Math.PI / 2;
-        tile.position.set((r - 0.5) * sqSize, 4.3, -halfH + c * sqSize + sqSize / 2);
+        tile.position.set((r - 0.5) * sqSize, 6.15, -halfH + c * sqSize + sqSize / 2);
         tile.receiveShadow = true;
         gantry.add(tile);
       }
@@ -547,8 +549,8 @@ class Game3D {
     this.carParts = carData;
     this.scene.add(this.carGroup);
 
-    // Eleva o carro para repousar com as 4 rodas exatamente no topo da pista (asfalto y=4, raio da roda r=10 -> y=4)
-    this.carGroup.position.set(0, 4, -325);
+    const startZ = -this.trackDimensions.h / 2 + this.trackDimensions.roadWidth / 2;
+    this.carGroup.position.set(0, 6, startZ);
   }
 
   buildForceVector() {
@@ -584,7 +586,7 @@ class Game3D {
     if (!this.carGroup) return;
 
     this.carGroup.position.x = physicsCar.x;
-    this.carGroup.position.y = 4; // Fundo dos pneus repousando no topo do asfalto
+    this.carGroup.position.y = 6; // Topo do asfalto chanfrado (depth 4 + bevelThickness 2 = 6)
     this.carGroup.position.z = physicsCar.z;
     this.carGroup.rotation.y = -physicsCar.angle;
 
@@ -651,7 +653,7 @@ class Game3D {
       }
 
       oCar.group.position.x += (p.x - oCar.group.position.x) * 0.25;
-      oCar.group.position.y = 4;
+      oCar.group.position.y = 6;
       oCar.group.position.z += (p.z - oCar.group.position.z) * 0.25;
       oCar.group.rotation.y = -p.angle;
 
@@ -685,7 +687,7 @@ class Game3D {
     }
 
     this.ghostGroup.group.visible = true;
-    this.ghostGroup.group.position.set(ghostPose.x, 4, ghostPose.z);
+    this.ghostGroup.group.position.set(ghostPose.x, 6, ghostPose.z);
     this.ghostGroup.group.rotation.y = -ghostPose.angle;
 
     if (this.ghostGroup.bodyMesh) {
