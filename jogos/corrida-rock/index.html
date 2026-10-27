@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Corrida Rock 3D Multiplayer ÔÇö Jogos para Aprender</title>
+<title>Corrida Rock 3D Multiplayer — Jogos para Aprender</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body {
@@ -66,7 +66,7 @@
     transition:width 0.1s linear;
   }
 
-  /* Banner de Notifica├º├úo de Volta / Recorde */
+  /* Banner de Notificação de Volta / Recorde */
   #lapBanner {
     position:fixed; top:12vh; left:50%; transform:translateX(-50%) scale(0.8);
     z-index:9; pointer-events:none; opacity:0;
@@ -132,7 +132,7 @@
   }
   .btn-label { font-size:clamp(10px, 2.2vw, 13px); font-weight:800; margin-top:-2px; }
 
-  /* Modal de In├¡cio e Sele├º├úo de Modo */
+  /* Modal de Início e Seleção de Modo */
   #start {
     position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:flex-start;
     flex-direction:column; gap:2vh; background:rgba(14,10,32,.97); color:#fff; text-align:center;
@@ -191,89 +191,89 @@
 <!-- HUD -->
 <div id="hud">
   <div class="hud-row">
-    <div id="lapTimer" title="Tempo da volta atual">ÔÅ▒´©Å 00:00.0</div>
-    <div id="bestLapInfo" title="Melhor volta da sess├úo">Ô¡É Recorde: --:--.-</div>
+    <div id="lapTimer" title="Tempo da volta atual">⏱️ 00:00.0</div>
+    <div id="bestLapInfo" title="Melhor volta da sessão">⭐ Recorde: --:--.-</div>
   </div>
   <div class="hud-subrow">
-    <span id="lapCounter">­ƒÅü Voltas: 0</span>
+    <span id="lapCounter">🏁 Voltas: 0</span>
     <span id="speedGauge">0 km/h</span>
-    <span id="multiplayerTag">ÔÅ▒´©Å Tomada de Tempo</span>
+    <span id="multiplayerTag">⏱️ Tomada de Tempo</span>
   </div>
-  <div id="turboMeterWrapper" title="Carga do Turbo (Espa├ºo / Ôû▓ / Bot├úo)">
+  <div id="turboMeterWrapper" title="Carga do Turbo (Espaço / ▲ / Botão)">
     <div id="turboMeterFill"></div>
   </div>
 </div>
 
-<!-- Banner de Notifica├º├úo de Volta / Recorde -->
+<!-- Banner de Notificação de Volta / Recorde -->
 <div id="lapBanner"></div>
 
 <!-- Ferramentas -->
 <div id="tools">
-  <a href="../../index.html" title="Voltar para o menu">ÔåÉ Jogos</a>
+  <a href="../../index.html" title="Voltar para o menu">⬅️ Jogos</a>
   <select id="selSpeed" title="Velocidade da corrida">
-    <option value="0.30">­ƒÉó 30% (Super Calmo)</option>
-    <option value="0.55" selected>­ƒÜÇ 55% (Padr├úo Infantil)</option>
-    <option value="0.80">ÔÜí 80% (R├ípido)</option>
-    <option value="1.00">­ƒÅÄ´©Å 100% (Rock n' Roll)</option>
+    <option value="0.30">🐢 30% (Super Calmo)</option>
+    <option value="0.55" selected>🚀 55% (Padrão Infantil)</option>
+    <option value="0.80">⚡ 80% (Rápido)</option>
+    <option value="1.00">🏎️ 100% (Rock n' Roll)</option>
   </select>
-  <button id="btnFull" title="Tela cheia">ÔøÂ Tela cheia</button>
-  <button id="btnTrava" title="Bloqueia teclas do sistema">­ƒöô Travar teclado</button>
-  <button id="btnSound" title="Ligar/Desligar som e m├║sica">­ƒöè Som: ligado</button>
+  <button id="btnFull" title="Tela cheia">⛶ Tela cheia</button>
+  <button id="btnTrava" title="Bloqueia teclas do sistema">🔓 Travar teclado</button>
+  <button id="btnSound" title="Ligar/Desligar som e música">🔊 Som: ligado</button>
 </div>
 
 <!-- Controles Touch na Tela -->
 <div id="touchControls">
   <div class="touch-group">
-    <button class="touch-btn" id="btnLeft" title="Virar ├á esquerda">
-      <span>ÔùÇ</span>
+    <button class="touch-btn" id="btnLeft" title="Virar à esquerda">
+      <span>◀</span>
       <span class="btn-label">ESQ</span>
     </button>
-    <button class="touch-btn" id="btnRight" title="Virar ├á direita">
-      <span>ÔûÂ</span>
+    <button class="touch-btn" id="btnRight" title="Virar à direita">
+      <span>▶</span>
       <span class="btn-label">DIR</span>
     </button>
   </div>
   <div class="touch-group">
     <button class="touch-btn touch-btn-turbo" id="btnTurbo" title="Ativar Turbo">
-      <span>­ƒÜÇ</span>
+      <span>🚀</span>
       <span class="btn-label">TURBO</span>
     </button>
   </div>
 </div>
 
-<!-- Modal de In├¡cio e Sele├º├úo -->
+<!-- Modal de Início e Seleção -->
 <div id="start">
   <h1>Corrida Rock 3D <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v2.0.0 3D</span></h1>
-  <p>Pise fundo com gr├íficos 3D modernos, amortecedores din├ómicos e modo multiplayer online via Firebase da Google! ­ƒÅÄ´©Å­ƒÄ©</p>
+  <p>Pise fundo com gráficos 3D modernos, amortecedores dinâmicos e modo multiplayer online via Firebase da Google! 🏎️⚡🎸</p>
 
   <div class="mode-selector">
     <div class="mode-card selected" id="modeSolo">
-      <h3>ÔÅ▒´©Å Tomada de Tempo</h3>
-      <p>Corra contra o rel├│gio e dispute com seu pr├│prio carrinho fantasma!</p>
+      <h3>⏱️ Tomada de Tempo</h3>
+      <p>Corra contra o relógio e dispute com seu próprio carrinho fantasma!</p>
     </div>
     <div class="mode-card" id="modeMulti">
-      <h3>­ƒæÑ Multiplayer Online</h3>
+      <h3>👥 Multiplayer Online</h3>
       <p>Corra ao vivo com amigos pelo Firebase ou dispute com bots IA!</p>
     </div>
   </div>
 
   <div class="multiplayer-inputs" id="multiInputs">
-    <label>C├│digo da Sala de Corrida:</label>
+    <label>Código da Sala de Corrida:</label>
     <input type="text" id="inputRoom" value="ROCK" maxlength="8" placeholder="Ex: ROCK">
     <label>Seu Nome de Piloto:</label>
     <input type="text" id="inputPilot" value="Super Piloto" maxlength="15">
   </div>
   
   <div class="tip-box">
-    <b>­ƒÆí Tecnologias e Dicas:</b><br>
-    ÔÇó <b>Gr├íficos 3D Real (Three.js):</b> Pista extrudada, sombras, sem├íforo e ilumina├º├úo din├ómica.<br>
-    ÔÇó <b>Amortecedores Realistas:</b> O chassi se inclina nas curvas comprimindo as molas e empina com o turbo!<br>
-    ÔÇó <b>Flecha Vetor For├ºa:</b> Continua ativa para orientar as crian├ºas de qualquer ├óngulo.
+    <b>💡 Tecnologias e Dicas:</b><br>
+    • <b>Gráficos 3D Real (Three.js):</b> Pista extrudada, sombras, semáforo e iluminação dinâmica.<br>
+    • <b>Amortecedores Realistas:</b> O chassi se inclina nas curvas comprimindo as molas e empina com o turbo!<br>
+    • <b>Flecha Vetor Força:</b> Continua ativa para orientar as crianças de qualquer ângulo.
   </div>
 
   <p style="font-size:min(1.9vh,3vw); opacity:0.75;">
-    ­ƒò╣´©Å <b>Teclado:</b> Setas Ôùä e Ôû║ (ou A e D) para virar &nbsp;ÔÇó&nbsp; <b>Espa├ºo</b> ou Ôû▓ para TURBO!<br>
-    ­ƒô▒ <b>No celular:</b> Use os bot├Áes ÔùÇ, ÔûÂ e ­ƒÜÇ TURBO na parte inferior.
+    🕹️ <b>Teclado:</b> Setas ◀ e ▶ (ou A e D) para virar &nbsp;•&nbsp; <b>Espaço</b> ou ▲ para TURBO!<br>
+    📱 <b>No celular:</b> Use os botões ◀, ▶ e 🚀 TURBO na parte inferior.
   </p>
   <button id="btnStart">Ligar os Motores!</button>
 </div>
@@ -295,7 +295,7 @@
 
 <script>
 /* ============================================================================
-   L├ôGICA PRINCIPAL INTEGRADA: F├ìSICA + THREE.JS 3D + MULTIPLAYER
+   LÓGICA PRINCIPAL INTEGRADA: FÍSICA + THREE.JS 3D + MULTIPLAYER
    ========================================================================== */
 let started = false;
 let soundOn = true;
@@ -306,13 +306,13 @@ let selectedMode = "solo"; // "solo" ou "multi"
 const container3D = $("game3dContainer");
 const game3D = new Game3D(container3D);
 
-/* Configura├º├úo do seletor de modo Solo vs Multiplayer */
+/* Configuração do seletor de modo Solo vs Multiplayer */
 $("modeSolo").addEventListener("click", () => {
   selectedMode = "solo";
   $("modeSolo").classList.add("selected");
   $("modeMulti").classList.remove("selected");
   $("multiInputs").classList.remove("show");
-  $("multiplayerTag").textContent = "ÔÅ▒´©Å Tomada de Tempo";
+  $("multiplayerTag").textContent = "⏱️ Tomada de Tempo";
 });
 
 $("modeMulti").addEventListener("click", () => {
@@ -320,11 +320,11 @@ $("modeMulti").addEventListener("click", () => {
   $("modeMulti").classList.add("selected");
   $("modeSolo").classList.remove("selected");
   $("multiInputs").classList.add("show");
-  $("multiplayerTag").textContent = "­ƒæÑ Sala: " + ($("inputRoom").value || "ROCK");
+  $("multiplayerTag").textContent = "👥 Sala: " + ($("inputRoom").value || "ROCK");
 });
 
 /* ============================================================================
-   ├üUDIO RETR├ö ROCK N' ROLL (SINTETIZADOR WEB AUDIO API)
+   àüUDIO RETRàö ROCK N' ROLL (SINTETIZADOR WEB AUDIO API)
    ========================================================================== */
 let musicBeat = 0;
 let musicTimer = null;
@@ -384,7 +384,7 @@ function sLapFanfare(){
 }
 
 /* ============================================================================
-   ESTADO DO CARRINHO DE CORRIDA & F├ìSICA
+   ESTADO DO CARRINHO DE CORRIDA & FÍSICA
    ========================================================================== */
 const car = {
   x: 0,
@@ -396,11 +396,11 @@ const car = {
   width: 38,
   length: 54,
   color: "#ff4757",
-  // Suspens├úo / Amortecedores 3D
+  // Suspensão / Amortecedores 3D
   roll: 0,
   pitch: 0,
   steerAngle: 0,
-  // Vetor For├ºa Lateral
+  // Vetor Força Lateral
   vectorLeftActive: false,
   vectorRightActive: false,
   // Turbo
@@ -411,7 +411,7 @@ const car = {
   bounceTimer: 0
 };
 
-/* Sistema de Voltas e Cron├┤metro */
+/* Sistema de Voltas e Cronà┤metro */
 let lapStartTime = 0;
 let totalLapsCompleted = 0;
 let bestLapTime = null;
@@ -433,7 +433,7 @@ function formatTime(ms){
 function formatTimeSpeech(ms){
   const totalSec = ms / 1000;
   if(totalSec < 60){
-    return totalSec.toFixed(1).replace(".", " v├¡rgula ") + " segundos";
+    return totalSec.toFixed(1).replace(".", " vírgula ") + " segundos";
   }
   const mins = Math.floor(totalSec / 60);
   const secs = Math.floor(totalSec % 60);
@@ -465,7 +465,7 @@ function activateTurbo(){
 }
 
 /* ============================================================================
-   GEOMETRIA E LINHA M├ëDIA DO CIRCUITO 3D
+   GEOMETRIA E LINHA MàëDIA DO CIRCUITO 3D
    ========================================================================== */
 function getTrack3DPoint(px, pz){
   const t = game3D.trackDimensions;
@@ -541,7 +541,7 @@ function getTrack3DPoint(px, pz){
   return { cx, cz, dist, forwardAngle };
 }
 
-/* Ponto param├®trico para bots no circuito */
+/* Ponto paramétrico para bots no circuito */
 function getBotPoseAtT(progressT){
   const t = game3D.trackDimensions;
   const perimeter = 2 * (t.w - t.roadWidth + t.h - t.roadWidth);
@@ -575,14 +575,14 @@ function getBotPoseAtT(progressT){
 }
 
 /* ============================================================================
-   LOOP DE F├ìSICA E ATUALIZA├ç├âO
+   LOOP DE FÍSICA E ATUALIZAàçàâO
    ========================================================================== */
 let lastMultiplayerSend = 0;
 
 function updatePhysics(){
   if(!started) return;
 
-  // 1. Dire├º├úo / Curvas com vetor for├ºa
+  // 1. Direção / Curvas com vetor força
   car.vectorLeftActive = !!(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]);
   car.vectorRightActive = !!(keysPressed["ArrowRight"] || keysPressed["d"] || keysPressed["D"]);
 
@@ -600,7 +600,7 @@ function updatePhysics(){
     if(Math.random() < 0.15) sTireScreech();
   }
 
-  // 2. Amortecedores / Compress├úo Lateral Realista (Roll & Pitch)
+  // 2. Amortecedores / Compressão Lateral Realista (Roll & Pitch)
   const targetRoll = turnDirection * 0.9;
   car.roll += (targetRoll - car.roll) * 0.18;
 
@@ -622,11 +622,11 @@ function updatePhysics(){
   }
   $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
 
-  // 4. Posi├º├úo no mundo 3D (X e Z)
+  // 4. Posição no mundo 3D (X e Z)
   car.x += Math.cos(car.angle) * car.speed;
   car.z += Math.sin(car.angle) * car.speed;
 
-  // 5. Colis├úo Suave com Barreiras da Pista Extra Larga
+  // 5. Colisão Suave com Barreiras da Pista Extra Larga
   if(car.bounceTimer > 0) car.bounceTimer--;
 
   const trackInfo = getTrack3DPoint(car.x, car.z);
@@ -650,7 +650,7 @@ function updatePhysics(){
     car.speed *= 0.82;
   }
 
-  // 6. Grava├º├úo de telemetria da volta (Fantasma)
+  // 6. Gravação de telemetria da volta (Fantasma)
   if(lapStartTime > 0){
     const elapsed = performance.now() - lapStartTime;
     currentLapFrames.push({
@@ -663,13 +663,13 @@ function updatePhysics(){
       pitch: car.pitch,
       steerAngle: car.steerAngle
     });
-    $("lapTimer").textContent = `ÔÅ▒´©Å ${formatTime(elapsed)}`;
+    $("lapTimer").textContent = `⏱️ ${formatTime(elapsed)}`;
   }
 
   // 7. Checkpoints e Voltas
   checkLapProgress();
 
-  // 8. Sincroniza├º├úo Multiplayer via Firebase
+  // 8. Sincronização Multiplayer via Firebase
   if(selectedMode === "multi" && performance.now() - lastMultiplayerSend > 45){
     lastMultiplayerSend = performance.now();
     window.multiplayerManager.updateMyState({
@@ -685,12 +685,12 @@ function updatePhysics(){
     });
   }
 
-  // 9. Atualiza├º├úo no HUD
+  // 9. Atualização no HUD
   const displayKmh = Math.round(car.speed * 20);
-  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "­ƒÜÇ TURBO!" : ""}`;
+  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "🚀 TURBO!" : ""}`;
 }
 
-/* Verifica├º├úo de Checkpoints ao longo dos 4 quadrantes da pista 3D */
+/* Verificação de Checkpoints ao longo dos 4 quadrantes da pista 3D */
 function checkLapProgress(){
   // Checkpoints nos quadrantes
   if(car.x > 0 && car.z < 0) checkpoints[0] = true;
@@ -717,19 +717,19 @@ function checkLapProgress(){
       sLapFanfare();
       confetti();
       speak(`Novo recorde! ${formatTimeSpeech(lapDuration)}!`);
-      showLapBanner(`­ƒÅå NOVO RECORDE: ${formatTime(lapDuration)}!`, true);
+      showLapBanner(`🏆 NOVO RECORDE: ${formatTime(lapDuration)}!`, true);
 
       const bestEl = $("bestLapInfo");
-      bestEl.textContent = `Ô¡É Recorde: ${formatTime(bestLapTime)}`;
+      bestEl.textContent = `⭐ Recorde: ${formatTime(bestLapTime)}`;
       bestEl.classList.add("record-pulse");
       setTimeout(() => bestEl.classList.remove("record-pulse"), 3500);
     } else {
       sLapFanfare();
       speak(`Volta completa! ${formatTimeSpeech(lapDuration)}`);
-      showLapBanner(`­ƒÅü Volta ${totalLapsCompleted}: ${formatTime(lapDuration)}`, false);
+      showLapBanner(`🏁 Volta ${totalLapsCompleted}: ${formatTime(lapDuration)}`, false);
     }
 
-    $("lapCounter").textContent = `­ƒÅü Voltas: ${totalLapsCompleted}`;
+    $("lapCounter").textContent = `🏁 Voltas: ${totalLapsCompleted}`;
     currentLapFrames = [];
     lapStartTime = performance.now();
   }
@@ -768,18 +768,18 @@ function getGhostPose(elapsed){
 }
 
 /* ============================================================================
-   RENDERIZA├ç├âO 3D EM 60 FPS
+   RENDERIZAÇÃO 3D EM 60 FPS
    ========================================================================== */
 function animate(){
   requestAnimationFrame(animate);
 
-  // 1. Atualiza F├¡sica do jogador
+  // 1. Atualiza Física do jogador
   updatePhysics();
 
-  // 2. Atualiza modelo 3D do carro com suspens├úo e amortecedores
+  // 2. Atualiza modelo 3D do carro com suspensão e amortecedores
   game3D.updatePlayerCar(car);
 
-  // 3. Atualiza Fantasma do recorde (se aplic├ível)
+  // 3. Atualiza Fantasma do recorde (se aplicável)
   if(started && bestGhostFrames && lapStartTime > 0 && selectedMode === "solo"){
     const elapsed = performance.now() - lapStartTime;
     game3D.updateGhostCar(getGhostPose(elapsed));
@@ -847,7 +847,7 @@ $("btnTurbo").addEventListener("pointerup", () => $("btnTurbo").classList.remove
 $("btnTurbo").addEventListener("pointercancel", () => $("btnTurbo").classList.remove("active"));
 
 /* ============================================================================
-   INICIALIZA├ç├âO
+   INICIALIZAÇÃO
    ========================================================================== */
 $("btnStart").addEventListener("click", () => {
   started = true;
@@ -856,13 +856,13 @@ $("btnStart").addEventListener("click", () => {
 
   if(selectedMode === "multi"){
     window.multiplayerManager.joinRoom(roomName, pilotName, car.color);
-    $("multiplayerTag").textContent = "­ƒæÑ Sala: " + roomName;
+    $("multiplayerTag").textContent = "👥 Sala: " + roomName;
   }
 
   $("start").remove();
   try{ ac().resume(); }catch(e){}
-  // N├úo for├ºa tela cheia automaticamente - usu├írio pode ativar via bot├úo ÔøÂ quando quiser
-  speak("Liguem seus motores! 3, 2, 1, j├í!");
+  // Não força tela cheia automaticamente - usuário pode ativar via botão ⛶ quando quiser
+  speak("Liguem seus motores! 3, 2, 1, já!");
   sTurbo();
 
   lapStartTime = performance.now();
@@ -886,13 +886,13 @@ $("btnFull").addEventListener("click", () => {
 
 $("btnSound").addEventListener("click", () => {
   soundOn = !soundOn;
-  $("btnSound").textContent = soundOn ? "­ƒöè Som: ligado" : "­ƒöç Som: desligado";
+  $("btnSound").textContent = soundOn ? "🔊 Som: ligado" : "🔇 Som: desligado";
 });
 
 $("btnTrava").addEventListener("click", travaToggle);
 document.addEventListener("trava", e => {
   document.body.classList.toggle("travado", e.detail.on);
-  $("btnTrava").textContent = e.detail.on ? "­ƒöÆ Travado" : "­ƒöô Travar teclado";
+  $("btnTrava").textContent = e.detail.on ? "🔒 Travado" : "🔓 Travar teclado";
 });
 </script>
 </body>

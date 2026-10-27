@@ -482,6 +482,8 @@ class Game3D {
   buildForceVector() {
     this.forceVectorArrow = new THREE.Group();
 
+    // A flecha agora aponta no eixo +Z por padrão (lado direito do carro: +Z)
+    // CylinderGeometry padrão é no eixo Y; rotacionamos em X para alinhar ao eixo Z
     const shaftGeo = new THREE.CylinderGeometry(2.4, 2.4, 46, 16);
     shaftGeo.rotateX(Math.PI / 2);
     const shaftMat = new THREE.MeshBasicMaterial({ color: "#7ee8fa" });
@@ -527,24 +529,27 @@ class Game3D {
       }
     }
 
-    // Rodas com esterçamento dianteiro e rotação ao longo de Z (giro de rolagem do pneu)
+    // Rodas com esterçamento dianteiro e rotação ao longo de Z (giro para frente do pneu)
     if (this.carParts && this.carParts.wheels) {
       this.carParts.wheels.fl.rotation.y = physicsCar.steerAngle;
       this.carParts.wheels.fr.rotation.y = physicsCar.steerAngle;
 
       const spinSpeed = physicsCar.speed * 0.14;
-      this.carParts.wheels.fl.rotation.z -= spinSpeed;
-      this.carParts.wheels.fr.rotation.z -= spinSpeed;
-      this.carParts.wheels.rl.rotation.z -= spinSpeed;
-      this.carParts.wheels.rr.rotation.z -= spinSpeed;
+      this.carParts.wheels.fl.rotation.z += spinSpeed;
+      this.carParts.wheels.fr.rotation.z += spinSpeed;
+      this.carParts.wheels.rl.rotation.z += spinSpeed;
+      this.carParts.wheels.rr.rotation.z += spinSpeed;
     }
 
-    // Vetor Força Lateral
+    // Vetor Força Lateral:
+    // +Z é o lado direito do carro, -Z é o lado esquerdo do carro
     if (physicsCar.vectorLeftActive || physicsCar.vectorRightActive) {
       this.forceVectorArrow.visible = true;
       const isLeft = physicsCar.vectorLeftActive;
-      this.forceVectorArrow.rotation.y = isLeft ? Math.PI / 2 : -Math.PI / 2;
-      this.forceVectorArrow.position.z = isLeft ? -12 : 12;
+      // Para esquerda (-Z): rotaciona 180° (Math.PI) em torno do eixo Y
+      // Para direita (+Z): sem rotação adicional (0)
+      this.forceVectorArrow.rotation.y = isLeft ? Math.PI : 0;
+      this.forceVectorArrow.position.set(0, 18, isLeft ? -10 : 10);
     } else {
       this.forceVectorArrow.visible = false;
     }
