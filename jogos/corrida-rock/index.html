@@ -290,8 +290,8 @@
 <script src="../../lib/audio.js?v=10"></script>
 <script src="../../lib/particulas.js?v=10"></script>
 <script src="../../lib/trava.js?v=10"></script>
-<script src="firebase-config.js?v=3"></script>
-<script src="game3d.js?v=3"></script>
+<script src="firebase-config.js?v=4"></script>
+<script src="game3d.js?v=4"></script>
 
 <script>
 /* ============================================================================
@@ -396,9 +396,14 @@ const car = {
   width: 38,
   length: 54,
   color: "#ff4757",
-  // Suspensão / Amortecedores 3D
+  // Suspensão / Amortecedores 3D com física de Mola (Molejo)
   roll: 0,
+  rollVel: 0,
   pitch: 0,
+  pitchVel: 0,
+  bounceY: 0,
+  bounceVel: 0,
+  suspPhase: 0,
   steerAngle: 0,
   // Vetor Força Lateral
   vectorLeftActive: false,
@@ -671,14 +676,22 @@ function updatePhysics(){
     if(Math.random() < 0.15) sTireScreech();
   }
 
-  // 2. Amortecedores / Compressão Lateral Realista (Roll & Pitch)
-  const targetRoll = turnDirection * 0.9;
-  car.roll += (targetRoll - car.roll) * 0.18;
+  // 2. Amortecedores / Suspensão Dinâmica com Efeito de Mola (Molejo nas Curvas)
+  const targetRoll = turnDirection * 1.15;
+  car.rollVel = (car.rollVel + (targetRoll - car.roll) * 0.22) * 0.78;
+  car.roll += car.rollVel;
 
-  const targetPitch = car.turboActive ? 0.85 : (car.speed > 0.5 ? 0.35 : 0);
-  car.pitch += (targetPitch - car.pitch) * 0.14;
+  const targetPitch = car.turboActive ? 0.95 : (car.speed > 0.5 ? 0.28 : 0);
+  car.pitchVel = (car.pitchVel + (targetPitch - car.pitch) * 0.20) * 0.80;
+  car.pitch += car.pitchVel;
 
-  const targetSteer = turnDirection * 0.38;
+  // Oscilação vertical de suspensão (molejo ao fazer curvas e acelerar)
+  car.suspPhase += car.speed * 0.14;
+  const curveJounce = (turnDirection !== 0) ? Math.sin(car.suspPhase * 1.8) * 1.8 : Math.sin(car.suspPhase) * 0.5;
+  car.bounceVel = (car.bounceVel + (curveJounce - car.bounceY) * 0.25) * 0.76;
+  car.bounceY += car.bounceVel;
+
+  const targetSteer = turnDirection * 0.42;
   car.steerAngle += (targetSteer - car.steerAngle) * 0.25;
 
   // 3. Velocidade e Turbo
@@ -713,6 +726,9 @@ function updatePhysics(){
       car.bounceTimer = 10;
       sBounce();
     }
+    // Impulso de molejo ao passar na zebra
+    car.bounceVel += 1.6;
+    car.rollVel += (Math.random() - 0.5) * 0.4;
 
     let diffAngle = trackInfo.forwardAngle - car.angle;
     while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
@@ -931,8 +947,8 @@ $("btnStart").addEventListener("click", () => {
     car.x = Math.round(-35 + Math.random() * 50);
     car.z = Math.round(-255 + (Math.random() * 50 - 25));
     car.color = window.multiplayerManager.playerColor;
-    if(game3D.carBody && game3D.carBody.material){
-      game3D.carBody.material.color.set(car.color);
+    if(game3D.carParts && game3D.carParts.setColor){
+      game3D.carParts.setColor(car.color);
     }
 
     window.multiplayerManager.onPlayersChange = (others) => {

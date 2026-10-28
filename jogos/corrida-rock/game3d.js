@@ -373,179 +373,436 @@ class Game3D {
     this.scene.add(gantry);
   }
 
+  /* Gerador de Texturas Procedurais Estilo Rock n' Roll Racing */
+  createCarBodyTexture(colorHex) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    // Pintura base metálica
+    ctx.fillStyle = colorHex;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Sombreamento lateral e chanfros de armadura
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "rgba(255,255,255,0.22)");
+    grad.addColorStop(0.5, "rgba(0,0,0,0)");
+    grad.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Faixas Duplas de Corrida (Racing Stripes Douradas e Brancas)
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 196, 512, 120);
+    ctx.fillStyle = "#ffd23f";
+    ctx.fillRect(0, 206, 512, 42);
+    ctx.fillRect(0, 264, 512, 42);
+    ctx.fillStyle = colorHex;
+    ctx.fillRect(0, 248, 512, 16);
+
+    // Chamas / Raios Laterais Estilo Hot-Rod SNES
+    ctx.fillStyle = "#ffd23f";
+    for (let side of [45, 385]) {
+      ctx.beginPath();
+      ctx.moveTo(420, side);
+      ctx.lineTo(240, side + 18);
+      ctx.lineTo(290, side + 36);
+      ctx.lineTo(140, side + 48);
+      ctx.lineTo(310, side + 72);
+      ctx.lineTo(420, side + 80);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "#ff6b6b";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    // Grelhas de ventilação (Louvers) no capô e linhas de painel
+    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(16, 16, 480, 480);
+
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    for (let i = 0; i < 5; i++) {
+      ctx.fillRect(340 + i * 16, 140, 8, 42);
+      ctx.fillRect(340 + i * 16, 330, 8, 42);
+    }
+
+    // Emblema numérico #01 nas portas/capô
+    for (let cy of [95, 415]) {
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(210, cy, 38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#161324";
+      ctx.stroke();
+
+      ctx.fillStyle = "#161324";
+      ctx.font = "900 38px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("77", 210, cy + 2);
+    }
+
+    // Rebites metálicos nas bordas
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    for (let x = 32; x < 490; x += 36) {
+      ctx.beginPath();
+      ctx.arc(x, 28, 3.5, 0, Math.PI * 2);
+      ctx.arc(x, 484, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  createCabinTexture(colorHex) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    // Vidro escuro azulado refletivo
+    const grad = ctx.createLinearGradient(0, 0, 256, 256);
+    grad.addColorStop(0, "#0f172a");
+    grad.addColorStop(0.45, "#1e293b");
+    grad.addColorStop(0.55, "#38bdf8");
+    grad.addColorStop(0.65, "#1e293b");
+    grad.addColorStop(1, "#090d16");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Gaiola de proteção interna (Roll Cage) e moldura metálica
+    ctx.strokeStyle = "#64748b";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(8, 8, 240, 240);
+
+    // Reflexo diagonal no para-brisa
+    ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.beginPath();
+    ctx.moveTo(40, 0);
+    ctx.lineTo(95, 0);
+    ctx.lineTo(20, 256);
+    ctx.lineTo(0, 256);
+    ctx.closePath();
+    ctx.fill();
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  createWheelTextures() {
+    if (this._wheelTexCache) return this._wheelTexCache;
+
+    // 1. Textura da banda de rodagem do pneu (gomos off-road)
+    const treadCanvas = document.createElement("canvas");
+    treadCanvas.width = 256;
+    treadCanvas.height = 64;
+    const tCtx = treadCanvas.getContext("2d");
+    tCtx.fillStyle = "#181622";
+    tCtx.fillRect(0, 0, 256, 64);
+    tCtx.fillStyle = "#2d2a3e";
+    for (let x = 0; x < 256; x += 32) {
+      tCtx.fillRect(x + 4, 4, 18, 24);
+      tCtx.fillRect(x + 14, 36, 18, 24);
+    }
+    const treadTex = new THREE.CanvasTexture(treadCanvas);
+    treadTex.wrapS = THREE.RepeatWrapping;
+    treadTex.wrapT = THREE.RepeatWrapping;
+
+    // 2. Textura da roda esportiva de 5 raios dourada
+    const rimCanvas = document.createElement("canvas");
+    rimCanvas.width = 256;
+    rimCanvas.height = 256;
+    const rCtx = rimCanvas.getContext("2d");
+    const cx = 128, cy = 128;
+
+    rCtx.fillStyle = "#151320";
+    rCtx.fillRect(0, 0, 256, 256);
+
+    // Anel externo do pneu e aro metálico
+    rCtx.beginPath();
+    rCtx.arc(cx, cy, 120, 0, Math.PI * 2);
+    rCtx.fillStyle = "#1c192b";
+    rCtx.fill();
+
+    rCtx.beginPath();
+    rCtx.arc(cx, cy, 82, 0, Math.PI * 2);
+    rCtx.fillStyle = "#0f0e17";
+    rCtx.fill();
+    rCtx.lineWidth = 10;
+    rCtx.strokeStyle = "#ffd23f";
+    rCtx.stroke();
+
+    // 5 Raios Estrela (Cragar / Muscle Car Rim)
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * Math.PI * 2;
+      rCtx.save();
+      rCtx.translate(cx, cy);
+      rCtx.rotate(ang);
+      rCtx.fillStyle = "#ffd23f";
+      rCtx.beginPath();
+      rCtx.moveTo(-14, 0);
+      rCtx.lineTo(-8, 78);
+      rCtx.lineTo(8, 78);
+      rCtx.lineTo(14, 0);
+      rCtx.closePath();
+      rCtx.fill();
+      rCtx.restore();
+    }
+
+    // Cubo central cromado e parafusos
+    rCtx.beginPath();
+    rCtx.arc(cx, cy, 22, 0, Math.PI * 2);
+    rCtx.fillStyle = "#dfe4ea";
+    rCtx.fill();
+    rCtx.lineWidth = 4;
+    rCtx.strokeStyle = "#151320";
+    rCtx.stroke();
+
+    const rimTex = new THREE.CanvasTexture(rimCanvas);
+    this._wheelTexCache = { treadTex, rimTex };
+    return this._wheelTexCache;
+  }
+
   /* Modelagem autêntica do carro estilo Marauder / Rock n' Roll Racing SNES */
   buildCarMesh(colorHex = "#ff4757", isGhost = false) {
     const group = new THREE.Group();
 
+    const bodyTex = this.createCarBodyTexture(colorHex);
+    const cabinTex = this.createCabinTexture(colorHex);
+    const { treadTex, rimTex } = this.createWheelTextures();
+
     const bodyMat = new THREE.MeshStandardMaterial({
-      color: colorHex,
-      metalness: isGhost ? 0.3 : 0.85,
-      roughness: isGhost ? 0.4 : 0.22,
+      map: isGhost ? null : bodyTex,
+      color: isGhost ? colorHex : "#ffffff",
+      metalness: isGhost ? 0.3 : 0.55,
+      roughness: isGhost ? 0.4 : 0.32,
       transparent: isGhost,
       opacity: isGhost ? 0.55 : 1.0
     });
 
     const chromeMat = new THREE.MeshStandardMaterial({
-      color: "#dfe4ea",
+      color: "#eef2f6",
       metalness: 0.95,
-      roughness: 0.1
+      roughness: 0.12
     });
 
     const glassMat = new THREE.MeshStandardMaterial({
-      color: "#18142c",
-      metalness: 0.9,
-      roughness: 0.1,
-      transparent: isGhost,
-      opacity: isGhost ? 0.45 : 0.95
-    });
-
-    const tireMat = new THREE.MeshStandardMaterial({
-      color: "#151320",
-      roughness: 0.8,
-      metalness: 0.1
-    });
-
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: "#ffd23f",
+      map: isGhost ? null : cabinTex,
+      color: isGhost ? "#18142c" : "#ffffff",
       metalness: 0.85,
-      roughness: 0.2
+      roughness: 0.12,
+      transparent: isGhost,
+      opacity: isGhost ? 0.45 : 0.98
     });
 
-    // 1. Chassi musculoso do carro (Comprimento = eixo X, Largura = eixo Z)
-    const chassiGeo = new THREE.BoxGeometry(56, 14, 34);
+    const darkMetalMat = new THREE.MeshStandardMaterial({
+      color: "#1e1b2e",
+      metalness: 0.7,
+      roughness: 0.4
+    });
+
+    // GRUPO SUSPENSO DA CARROCERIA (Pivô em y = 13 para dar molejo completo nas curvas!)
+    const bodyGroup = new THREE.Group();
+    bodyGroup.position.y = 13;
+    group.add(bodyGroup);
+
+    // 1. Chassi musculoso principal (Comprimento = eixo X, Largura = eixo Z)
+    const chassiGeo = new THREE.BoxGeometry(56, 13, 34);
     const chassi = new THREE.Mesh(chassiGeo, bodyMat);
-    chassi.position.y = 13;
+    chassi.position.y = 0;
     chassi.castShadow = !isGhost;
     chassi.receiveShadow = !isGhost;
-    group.add(chassi);
+    bodyGroup.add(chassi);
 
-    // Cabine com vidro
-    const cabinGeo = new THREE.BoxGeometry(28, 12, 26);
+    // Para-lamas alargados (Fender flares musculosos sobre as 4 rodas)
+    const fenderGeo = new THREE.BoxGeometry(18, 6, 38);
+    const fenderF = new THREE.Mesh(fenderGeo, darkMetalMat);
+    fenderF.position.set(16, -2, 0);
+    bodyGroup.add(fenderF);
+    const fenderR = new THREE.Mesh(fenderGeo, darkMetalMat);
+    fenderR.position.set(-16, -2, 0);
+    bodyGroup.add(fenderR);
+
+    // Para-choque dianteiro cromado (Bullbar frontal em +X)
+    const bumperGeo = new THREE.BoxGeometry(4, 5, 36);
+    const frontBumper = new THREE.Mesh(bumperGeo, chromeMat);
+    frontBumper.position.set(28.5, -3.5, 0);
+    bodyGroup.add(frontBumper);
+
+    // Grade frontal escura
+    const grilleGeo = new THREE.BoxGeometry(2, 6, 18);
+    const grille = new THREE.Mesh(grilleGeo, darkMetalMat);
+    grille.position.set(28.2, 0, 0);
+    bodyGroup.add(grille);
+
+    // Cabine com vidro texturizado e reflexos
+    const cabinGeo = new THREE.BoxGeometry(28, 11, 26);
     const cabin = new THREE.Mesh(cabinGeo, glassMat);
-    cabin.position.set(-2, 23, 0);
+    cabin.position.set(-3, 10, 0);
     cabin.castShadow = !isGhost;
-    group.add(cabin);
+    bodyGroup.add(cabin);
 
-    // Supercharger / Blower cromado no capô (+X é a frente do carro!)
-    const blowerGeo = new THREE.BoxGeometry(12, 8, 14);
+    // Teto da cabine na cor do carro
+    const roofGeo = new THREE.BoxGeometry(24, 2, 24);
+    const roof = new THREE.Mesh(roofGeo, bodyMat);
+    roof.position.set(-3, 15.6, 0);
+    bodyGroup.add(roof);
+
+    // Supercharger / Blower V8 cromado no capô (+X é a frente!)
+    const blowerBaseGeo = new THREE.BoxGeometry(13, 5, 14);
+    const blowerBase = new THREE.Mesh(blowerBaseGeo, darkMetalMat);
+    blowerBase.position.set(15, 7, 0);
+    bodyGroup.add(blowerBase);
+
+    const blowerGeo = new THREE.BoxGeometry(11, 6, 12);
     const blower = new THREE.Mesh(blowerGeo, chromeMat);
-    blower.position.set(16, 22, 0);
+    blower.position.set(15, 11, 0);
     blower.castShadow = !isGhost;
-    group.add(blower);
+    bodyGroup.add(blower);
 
-    // Entradas duplas de ar no topo do soprador
-    const scoopGeo = new THREE.BoxGeometry(4, 4, 4);
-    const s1 = new THREE.Mesh(scoopGeo, chromeMat);
-    s1.position.set(22, 23, -4);
-    group.add(s1);
-    const s2 = new THREE.Mesh(scoopGeo, chromeMat);
-    s2.position.set(22, 23, 4);
-    group.add(s2);
+    // Entradas triplas de ar (Bugcatcher Scoop) com borboletas vermelhas
+    const scoopGeo = new THREE.CylinderGeometry(2.2, 2.2, 5, 12);
+    scoopGeo.rotateZ(Math.PI / 2);
+    const redValveMat = new THREE.MeshBasicMaterial({ color: "#ff4757" });
+    for (let zOff of [-4, 0, 4]) {
+      const scoop = new THREE.Mesh(scoopGeo, chromeMat);
+      scoop.position.set(20, 12.2, zOff);
+      bodyGroup.add(scoop);
 
-    // Escapamentos laterais duplos cromados (apontando para trás no eixo X)
-    const pipeGeo = new THREE.CylinderGeometry(2, 2, 26, 12);
+      const valve = new THREE.Mesh(new THREE.CircleGeometry(1.7, 10), redValveMat);
+      valve.rotation.y = Math.PI / 2;
+      valve.position.set(22.6, 12.2, zOff);
+      bodyGroup.add(valve);
+    }
+
+    // Escapamentos laterais duplos cromados (Side Pipes)
+    const pipeGeo = new THREE.CylinderGeometry(2.2, 2.2, 28, 12);
     pipeGeo.rotateZ(Math.PI / 2);
     const pipeL = new THREE.Mesh(pipeGeo, chromeMat);
-    pipeL.position.set(-10, 8, -18);
-    group.add(pipeL);
+    pipeL.position.set(-8, -4.5, -18.5);
+    bodyGroup.add(pipeL);
     const pipeR = new THREE.Mesh(pipeGeo, chromeMat);
-    pipeR.position.set(-10, 8, 18);
-    group.add(pipeR);
+    pipeR.position.set(-8, -4.5, 18.5);
+    bodyGroup.add(pipeR);
 
-    // Faixa central amarela de corrida
-    const stripeGeo = new THREE.BoxGeometry(56.2, 14.2, 8);
-    const stripe = new THREE.Mesh(stripeGeo, goldMat);
-    stripe.position.y = 13;
-    group.add(stripe);
+    // Chamas de Nitro nos escapamentos traseiros (visíveis durante o Turbo!)
+    const flameGeo = new THREE.ConeGeometry(3.2, 16, 10);
+    flameGeo.rotateZ(Math.PI / 2); // Aponta para -X (para trás)
+    const flameMat = new THREE.MeshBasicMaterial({ color: "#00d2d3" });
+    const flameL = new THREE.Mesh(flameGeo, flameMat);
+    flameL.position.set(-28, -4.5, -18.5);
+    flameL.visible = false;
+    bodyGroup.add(flameL);
+
+    const flameR = new THREE.Mesh(flameGeo, flameMat);
+    flameR.position.set(-28, -4.5, 18.5);
+    flameR.visible = false;
+    bodyGroup.add(flameR);
 
     // Aerofólio esportivo traseiro (-X é a traseira)
-    const wingGeo = new THREE.BoxGeometry(8, 3, 38);
+    const wingGeo = new THREE.BoxGeometry(9, 2.5, 38);
     const wing = new THREE.Mesh(wingGeo, bodyMat);
-    wing.position.set(-26, 28, 0);
+    wing.position.set(-25, 15, 0);
+    wing.rotation.z = -0.15; // Inclinado para downforce
     wing.castShadow = !isGhost;
-    group.add(wing);
+    bodyGroup.add(wing);
 
-    const wingPostGeo = new THREE.CylinderGeometry(1.5, 1.5, 12);
+    const wingPostGeo = new THREE.BoxGeometry(4, 10, 2.5);
     const wp1 = new THREE.Mesh(wingPostGeo, chromeMat);
-    wp1.position.set(-26, 22, -14);
-    group.add(wp1);
+    wp1.position.set(-25, 10, -13);
+    bodyGroup.add(wp1);
     const wp2 = new THREE.Mesh(wingPostGeo, chromeMat);
-    wp2.position.set(-26, 22, 14);
-    group.add(wp2);
+    wp2.position.set(-25, 10, 13);
+    bodyGroup.add(wp2);
 
     // Faróis dianteiros duplos brilhantes (+X)
     const lampMat = new THREE.MeshBasicMaterial({ color: "#7ee8fa" });
-    const lampGeo = new THREE.BoxGeometry(2, 5, 7);
+    const lampGeo = new THREE.BoxGeometry(2, 4.5, 7);
     const fl1 = new THREE.Mesh(lampGeo, lampMat);
-    fl1.position.set(28, 13, -10);
-    group.add(fl1);
+    fl1.position.set(28.1, 0.5, -11);
+    bodyGroup.add(fl1);
     const fl2 = new THREE.Mesh(lampGeo, lampMat);
-    fl2.position.set(28, 13, 10);
-    group.add(fl2);
+    fl2.position.set(28.1, 0.5, 11);
+    bodyGroup.add(fl2);
 
     // Lanternas de freio traseiras (-X)
     const brakeMat = new THREE.MeshBasicMaterial({ color: "#ff4757" });
     const bl1 = new THREE.Mesh(lampGeo, brakeMat);
-    bl1.position.set(-28, 13, -11);
-    group.add(bl1);
+    bl1.position.set(-28.1, 0.5, -11);
+    bodyGroup.add(bl1);
     const bl2 = new THREE.Mesh(lampGeo, brakeMat);
-    bl2.position.set(-28, 13, 11);
-    group.add(bl2);
+    bl2.position.set(-28.1, 0.5, 11);
+    bodyGroup.add(bl2);
 
-    // 2. RODAS ALINHADAS PERFEITAMENTE:
-    // O cilindro em Three.js nasce no eixo Y.
-    // Para rodar como pneu no plano de rolamento X, o eixo do cilindro deve ficar ao longo de Z!
-    // Logo, rotacionamos o CylinderGeometry em X (rotateX(Math.PI / 2))!
-    const wheelGeo = new THREE.CylinderGeometry(10, 10, 8, 24);
+    // 2. RODAS COM TEXTURA DE GOMOS E ARO ESTRELA DE 5 PONTAS:
+    // CylinderGeometry tem [lateral (banda de rodagem), topo (aro), base (aro)]
+    const wheelMaterials = [
+      new THREE.MeshStandardMaterial({ map: treadTex, roughness: 0.85, metalness: 0.1 }),
+      new THREE.MeshStandardMaterial({ map: rimTex, roughness: 0.25, metalness: 0.8 }),
+      new THREE.MeshStandardMaterial({ map: rimTex, roughness: 0.25, metalness: 0.8 })
+    ];
+
+    const wheelGeo = new THREE.CylinderGeometry(10.5, 10.5, 9, 24);
     wheelGeo.rotateX(Math.PI / 2); // Eixo ao longo de Z (roda alinhada para frente em X)
 
-    const wheelFL = new THREE.Mesh(wheelGeo, tireMat);
-    const wheelFR = new THREE.Mesh(wheelGeo, tireMat);
-    const wheelRL = new THREE.Mesh(wheelGeo, tireMat);
-    const wheelRR = new THREE.Mesh(wheelGeo, tireMat);
+    const wheelFL = new THREE.Mesh(wheelGeo, wheelMaterials);
+    const wheelFR = new THREE.Mesh(wheelGeo, wheelMaterials);
+    const wheelRL = new THREE.Mesh(wheelGeo, wheelMaterials);
+    const wheelRR = new THREE.Mesh(wheelGeo, wheelMaterials);
 
-    wheelFL.position.set(16, 10, -20);
-    wheelFR.position.set(16, 10, 20);
-    wheelRL.position.set(-16, 10, -20);
-    wheelRR.position.set(-16, 10, 20);
+    wheelFL.position.set(16, 10.5, -20);
+    wheelFR.position.set(16, 10.5, 20);
+    wheelRL.position.set(-16, 10.5, -20);
+    wheelRR.position.set(-16, 10.5, 20);
 
-    // Calotas douradas
     [wheelFL, wheelFR, wheelRL, wheelRR].forEach(w => {
       w.castShadow = !isGhost;
-      const rimGeo = new THREE.CylinderGeometry(5.5, 5.5, 8.2, 16);
-      rimGeo.rotateX(Math.PI / 2);
-      const rim = new THREE.Mesh(rimGeo, goldMat);
-      w.add(rim);
     });
 
-    // Amortecedores e Molas Helicoidais amarelas
-    const springMat = new THREE.MeshStandardMaterial({ color: "#ffd23f", metalness: 0.9, roughness: 0.1 });
-    const springGeo = new THREE.CylinderGeometry(2.5, 2.5, 9, 12);
+    // Amortecedores e Molas Helicoidais amarelas visíveis entre as rodas e o chassi
+    const springMat = new THREE.MeshStandardMaterial({ color: "#ffd23f", metalness: 0.85, roughness: 0.15 });
+    const springGeo = new THREE.CylinderGeometry(3.0, 3.0, 10, 12);
 
     const sFL = new THREE.Mesh(springGeo, springMat);
-    sFL.position.set(16, 13, -14);
+    sFL.position.set(16, 12, -15);
     const sFR = new THREE.Mesh(springGeo, springMat);
-    sFR.position.set(16, 13, 14);
+    sFR.position.set(16, 12, 15);
     const sRL = new THREE.Mesh(springGeo, springMat);
-    sRL.position.set(-16, 13, -14);
+    sRL.position.set(-16, 12, -15);
     const sRR = new THREE.Mesh(springGeo, springMat);
-    sRR.position.set(-16, 13, 14);
+    sRR.position.set(-16, 12, 15);
 
     group.add(wheelFL, wheelFR, wheelRL, wheelRR);
     group.add(sFL, sFR, sRL, sRR);
 
     return {
       group,
+      bodyGroup,
       bodyMesh: chassi,
+      roofMesh: roof,
+      wingMesh: wing,
+      flames: { l: flameL, r: flameR },
       wheels: { fl: wheelFL, fr: wheelFR, rl: wheelRL, rr: wheelRR },
-      springs: { fl: sFL, fr: sFR, rl: sRL, rr: sRR }
+      springs: { fl: sFL, fr: sFR, rl: sRL, rr: sRR },
+      setColor: (newColorHex) => {
+        const newTex = this.createCarBodyTexture(newColorHex);
+        bodyMat.map = newTex;
+        bodyMat.needsUpdate = true;
+      }
     };
   }
 
   buildPlayerCar() {
     const carData = this.buildCarMesh("#ff4757", false);
     this.carGroup = carData.group;
-    this.carBody = carData.bodyMesh;
+    this.carBody = carData.bodyGroup;
     this.carParts = carData;
     this.scene.add(this.carGroup);
 
@@ -586,56 +843,95 @@ class Game3D {
     if (!this.carGroup) return;
 
     this.carGroup.position.x = physicsCar.x;
-    this.carGroup.position.y = 6; // Topo do asfalto chanfrado (depth 4 + bevelThickness 2 = 6)
+    this.carGroup.position.y = 6; // Topo do asfalto chanfrado
     this.carGroup.position.z = physicsCar.z;
     this.carGroup.rotation.y = -physicsCar.angle;
 
-    // Amortecedores com compressão lateral ativa
+    // 1. Molejo completo da Suspensão e Amortecedores (Roll, Pitch e Bounce vertical)
     if (this.carBody) {
-      this.carBody.rotation.x = physicsCar.roll * 0.22;
-      this.carBody.rotation.z = -physicsCar.pitch * 0.14;
-      this.carBody.position.y = 13 + Math.abs(physicsCar.roll) * 1.5 - physicsCar.pitch * 2.0;
+      const bounceY = physicsCar.bounceY || 0;
+      // Inclinação lateral (roll) pronunciada nas curvas + empinada (pitch) no turbo/aceleração
+      this.carBody.rotation.x = physicsCar.roll * 0.42;
+      this.carBody.rotation.z = physicsCar.pitch * 0.25;
+      this.carBody.position.y = 13 + bounceY - Math.abs(physicsCar.roll) * 1.4 + physicsCar.pitch * 1.2;
 
       if (this.carParts && this.carParts.springs) {
-        this.carParts.springs.fl.scale.y = 1.0 - physicsCar.roll * 0.45;
-        this.carParts.springs.fr.scale.y = 1.0 + physicsCar.roll * 0.45;
-        this.carParts.springs.rl.scale.y = 1.0 - physicsCar.roll * 0.35 + physicsCar.pitch * 0.3;
-        this.carParts.springs.rr.scale.y = 1.0 + physicsCar.roll * 0.35 + physicsCar.pitch * 0.3;
+        const r = physicsCar.roll;
+        const p = physicsCar.pitch;
+        const b = bounceY * 0.08;
+        this.carParts.springs.fl.scale.y = Math.max(0.4, 1.0 + r * 0.55 + p * 0.35 + b);
+        this.carParts.springs.fr.scale.y = Math.max(0.4, 1.0 - r * 0.55 + p * 0.35 + b);
+        this.carParts.springs.rl.scale.y = Math.max(0.4, 1.0 + r * 0.48 - p * 0.35 + b);
+        this.carParts.springs.rr.scale.y = Math.max(0.4, 1.0 - r * 0.48 - p * 0.35 + b);
+      }
+
+      // Chamas do escapamento durante o Turbo
+      if (this.carParts && this.carParts.flames) {
+        const showFlames = !!physicsCar.turboActive;
+        this.carParts.flames.l.visible = showFlames;
+        this.carParts.flames.r.visible = showFlames;
+        if (showFlames) {
+          const flicker = 0.8 + Math.random() * 0.5;
+          this.carParts.flames.l.scale.set(1, flicker, 1);
+          this.carParts.flames.r.scale.set(1, flicker, 1);
+        }
       }
     }
 
-    // Rodas com esterçamento dianteiro e rotação ao longo de Z (giro para frente do pneu)
+    // 2. Rodas com esterçamento dianteiro e giro com gomos visíveis
     if (this.carParts && this.carParts.wheels) {
-      // Invertemos o sinal para esterçar corretamente de acordo com o referencial Three.js
       this.carParts.wheels.fl.rotation.y = -physicsCar.steerAngle;
       this.carParts.wheels.fr.rotation.y = -physicsCar.steerAngle;
 
-      const spinSpeed = physicsCar.speed * 0.14;
+      const spinSpeed = physicsCar.speed * 0.16;
       this.carParts.wheels.fl.rotation.z += spinSpeed;
       this.carParts.wheels.fr.rotation.z += spinSpeed;
       this.carParts.wheels.rl.rotation.z += spinSpeed;
       this.carParts.wheels.rr.rotation.z += spinSpeed;
     }
 
-    // Vetor Força Lateral:
-    // +Z é o lado direito do carro, -Z é o lado esquerdo do carro
+    // 3. Vetor Força Lateral (+Z = direita, -Z = esquerda)
     if (physicsCar.vectorLeftActive || physicsCar.vectorRightActive) {
       this.forceVectorArrow.visible = true;
       const isLeft = physicsCar.vectorLeftActive;
-      // Para esquerda (-Z): rotaciona 180° (Math.PI) em torno do eixo Y
-      // Para direita (+Z): sem rotação adicional (0)
       this.forceVectorArrow.rotation.y = isLeft ? Math.PI : 0;
       this.forceVectorArrow.position.set(0, 18, isLeft ? -10 : 10);
     } else {
       this.forceVectorArrow.visible = false;
     }
 
-    // Câmera isométrica acompanhando o carro suavemente
-    const targetCamX = this.carGroup.position.x * 0.45;
-    const targetCamZ = this.carGroup.position.z * 0.45 + 500;
-    this.camera.position.x += (targetCamX - this.camera.position.x) * 0.08;
-    this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.08;
-    this.camera.lookAt(this.carGroup.position.x * 0.3, 0, this.carGroup.position.z * 0.3);
+    // 4. Câmera Isométrica com Foco 100% no Carrinho (Mobile & Desktop)
+    // Nunca deixa o carro sair da tela, adaptando a distância em telas verticais (mobile)
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    const isPortrait = aspect < 1.0;
+    const zoomScale = isPortrait ? Math.min(1.45, 0.92 / Math.max(0.45, aspect)) : 1.0;
+
+    const leadDist = Math.min(32, physicsCar.speed * 4.5);
+    const focusX = this.carGroup.position.x + Math.cos(physicsCar.angle) * leadDist;
+    const focusZ = this.carGroup.position.z + Math.sin(physicsCar.angle) * leadDist;
+
+    const camHeight = 390 * zoomScale;
+    const camOffsetZ = 390 * zoomScale;
+    // No celular vertical, desloca ligeiramente o foco para que o carro fique acima dos botões touch
+    const screenBiasZ = isPortrait ? 32 : 10;
+
+    const targetCamX = focusX;
+    const targetCamZ = focusZ + camOffsetZ;
+
+    if (!this._camInitialized) {
+      this.camera.position.set(targetCamX, camHeight, targetCamZ);
+      this._camLookX = focusX;
+      this._camLookZ = focusZ + screenBiasZ;
+      this._camInitialized = true;
+    } else {
+      this.camera.position.x += (targetCamX - this.camera.position.x) * 0.16;
+      this.camera.position.y += (camHeight - this.camera.position.y) * 0.12;
+      this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.16;
+      this._camLookX += (focusX - this._camLookX) * 0.22;
+      this._camLookZ += ((focusZ + screenBiasZ) - this._camLookZ) * 0.22;
+    }
+
+    this.camera.lookAt(this._camLookX, 8, this._camLookZ);
   }
 
   buildNameSprite(nameText, colorHex = "#7ee8fa") {
@@ -693,9 +989,9 @@ class Game3D {
       oCar.group.position.z += dz * 0.35;
       oCar.group.rotation.y = -(p.angle || 0);
 
-      if (oCar.bodyMesh) {
-        oCar.bodyMesh.rotation.x = (p.roll || 0) * 0.22;
-        oCar.bodyMesh.rotation.z = -(p.pitch || 0) * 0.14;
+      if (oCar.bodyGroup) {
+        oCar.bodyGroup.rotation.x = (p.roll || 0) * 0.42;
+        oCar.bodyGroup.rotation.z = (p.pitch || 0) * 0.25;
       }
       if (oCar.wheels) {
         oCar.wheels.fl.rotation.y = -(p.steer || 0);
@@ -731,9 +1027,9 @@ class Game3D {
     this.ghostGroup.group.position.set(ghostPose.x, 6, ghostPose.z);
     this.ghostGroup.group.rotation.y = -ghostPose.angle;
 
-    if (this.ghostGroup.bodyMesh) {
-      this.ghostGroup.bodyMesh.rotation.x = (ghostPose.roll || 0) * 0.22;
-      this.ghostGroup.bodyMesh.rotation.z = -(ghostPose.pitch || 0) * 0.14;
+    if (this.ghostGroup.bodyGroup) {
+      this.ghostGroup.bodyGroup.rotation.x = (ghostPose.roll || 0) * 0.42;
+      this.ghostGroup.bodyGroup.rotation.z = (ghostPose.pitch || 0) * 0.25;
     }
     if (this.ghostGroup.wheels) {
       this.ghostGroup.wheels.fl.rotation.y = -(ghostPose.steerAngle || 0);
