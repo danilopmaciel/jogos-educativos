@@ -3,14 +3,13 @@
    ========================================================================== */
 
 const firebaseConfig = {
-  projectId: "ryu2anos",
-  appId: "1:720785582808:web:8caadc0e99db70ddc3c5ad",
-  storageBucket: "ryu2anos.firebasestorage.app",
-  apiKey: "AIzaSyAKqYWSkm2nXAcxIqk-GCNj_gszg_jcUNU",
-  authDomain: "ryu2anos.firebaseapp.com",
-  databaseURL: "https://ryu2anos-default-rtdb.firebaseio.com",
-  messagingSenderId: "720785582808",
-  measurementId: "G-MWEERLE6W4"
+  projectId: "corrida-rock-3d",
+  appId: "1:946646927894:web:bf580cc954218b3bd40337",
+  storageBucket: "corrida-rock-3d.firebasestorage.app",
+  apiKey: "AIzaSyC7D3N3mNP_Fp9U1YK6by-LA8nerBsZlQ8",
+  authDomain: "corrida-rock-3d.firebaseapp.com",
+  databaseURL: "https://corrida-rock-3d-default-rtdb.firebaseio.com",
+  messagingSenderId: "946646927894"
 };
 
 const MP_PALETTE = [

@@ -53,6 +53,30 @@
     background:rgba(56, 103, 214, 0.45); border:1px solid #7ee8fa;
     padding:2px 10px; border-radius:12px; font-size:0.85em; color:#fff;
   }
+  #gamepadTag {
+    display:none;
+    background:rgba(46, 213, 115, 0.35); border:1px solid #2ed573;
+    padding:2px 10px; border-radius:12px; font-size:0.85em; color:#fff;
+  }
+  #gamepadTag.connected { display:inline-block; }
+
+  /* Overlay de Contagem Regressiva de Largada (3, 2, 1, JÁ!) */
+  #countdownOverlay {
+    position:fixed; inset:0; z-index:50; pointer-events:none;
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+  }
+  #countdownOverlay.active { display:flex; }
+  #countdownNumber {
+    font-size:clamp(80px, 22vw, 180px); font-weight:900; color:#ffd23f;
+    text-shadow:0 8px 0 #120e24, 0 0 45px rgba(255, 210, 63, 0.85);
+    transform:scale(1); transition:transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), color 0.15s;
+  }
+  #countdownSub {
+    font-size:clamp(18px, 4vw, 30px); font-weight:800; color:#fff;
+    background:rgba(18, 14, 36, 0.85); border:2px solid rgba(255,255,255,0.25);
+    padding:6px 22px; border-radius:999px; margin-top:-10px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.5);
+  }
 
   /* Barra de Turbo no HUD */
   #turboMeterWrapper {
@@ -198,10 +222,17 @@
     <span id="lapCounter">🏁 Voltas: 0</span>
     <span id="speedGauge">0 km/h</span>
     <span id="multiplayerTag">⏱️ Tomada de Tempo</span>
+    <span id="gamepadTag">🎮 Controle Ativo</span>
   </div>
   <div id="turboMeterWrapper" title="Carga do Turbo (Espaço / ▲ / Botão)">
     <div id="turboMeterFill"></div>
   </div>
+</div>
+
+<!-- Contagem Regressiva de Largada na Tela -->
+<div id="countdownOverlay">
+  <div id="countdownNumber">3</div>
+  <div id="countdownSub">PREPARE-SE NO GRID!</div>
 </div>
 
 <!-- Banner de Notificação de Volta / Recorde -->
@@ -272,6 +303,7 @@
   </div>
 
   <p style="font-size:min(1.9vh,3vw); opacity:0.75;">
+    🎮 <b>Controle Bluetooth / USB:</b> Analógico esquerdo para direção suave &nbsp;•&nbsp; Botão A/R2 para TURBO!<br>
     🕹️ <b>Teclado:</b> Setas ◀ e ▶ (ou A e D) para virar &nbsp;•&nbsp; <b>Espaço</b> ou ▲ para TURBO!<br>
     📱 <b>No celular:</b> Use os botões ◀, ▶ e 🚀 TURBO na parte inferior.
   </p>
@@ -290,14 +322,15 @@
 <script src="../../lib/audio.js?v=10"></script>
 <script src="../../lib/particulas.js?v=10"></script>
 <script src="../../lib/trava.js?v=10"></script>
-<script src="firebase-config.js?v=4"></script>
-<script src="game3d.js?v=4"></script>
+<script src="firebase-config.js?v=5"></script>
+<script src="game3d.js?v=5"></script>
 
 <script>
 /* ============================================================================
    LÓGICA PRINCIPAL INTEGRADA: FÍSICA + THREE.JS 3D + MULTIPLAYER
    ========================================================================== */
 let started = false;
+let raceUnlocked = false; // Só libera o movimento após a contagem 3, 2, 1, JÁ!
 let soundOn = true;
 let gameSpeed = 0.55;
 let selectedMode = "solo"; // "solo" ou "multi"
@@ -382,21 +415,33 @@ function sLapFanfare(){
     setTimeout(() => tone(f, 0.25, "sawtooth", 0.15), i * 110);
   });
 }
+function sCountdownBeep(isGo = false){
+  if(!soundOn) return;
+  if(isGo){
+    tone(880, 0.45, "sawtooth", 0.22, 1046.5);
+    setTimeout(() => tone(1046.5, 0.4, "triangle", 0.18), 60);
+  } else {
+    tone(440, 0.22, "square", 0.16);
+  }
+}
 
 /* ============================================================================
-   ESTADO DO CARRINHO DE CORRIDA & FÍSICA
+   ESTADO DO CARRINHO DE CORRIDA & FÍSICA SIMCADE
    ========================================================================== */
 const car = {
-  x: 0,
-  z: -255, // Centro da pista reta superior (-halfH + roadWidth/2)
-  angle: 0, // 0 = apontando para a direita no eixo X
+  x: -28,
+  z: -255, // Posicionado atrás da linha de largada sob o pórtico
+  angle: 0, // Direção para onde o bico do carro aponta (+X)
+  velAngle: 0, // Direção real do vetor velocidade (Simcade Drift)
+  slipAngle: 0, // Ângulo de derrapagem entre o bico e a trajetória
+  steerInput: 0, // Direção analógica contínua [-1.0 a +1.0]
   speed: 0,
   baseSpeed: 5.5,
   turnSpeed: 0.052,
   width: 38,
   length: 54,
   color: "#ff4757",
-  // Suspensão / Amortecedores 3D com física de Mola (Molejo)
+  // Suspensão / Amortecedores 3D Suaves
   roll: 0,
   rollVel: 0,
   pitch: 0,
@@ -459,7 +504,7 @@ function showLapBanner(text, isRecord = false){
 const keysPressed = {};
 
 function activateTurbo(){
-  if(!started) return;
+  if(!started || !raceUnlocked) return;
   if(car.turboCharge >= 0.35 && !car.turboActive){
     car.turboActive = true;
     car.turboTimer = car.turboMaxTimer;
@@ -651,66 +696,198 @@ function getBotPoseAtT(progressT){
 }
 
 /* ============================================================================
-   LOOP DE FÍSICA E ATUALIZAÇÃO
+   SUPORTE A CONTROLE BLUETOOTH / USB (GAMEPAD API COM ANALÓGICO SUAVE)
+   ========================================================================== */
+let gamepadSteer = 0;
+let gamepadActive = false;
+let prevGpTurbo = false;
+let prevGpStart = false;
+
+window.addEventListener("gamepadconnected", (e) => {
+  const tag = $("gamepadTag");
+  if(tag){
+    tag.textContent = "🎮 Controle Conectado";
+    tag.classList.add("connected");
+  }
+});
+
+window.addEventListener("gamepaddisconnected", () => {
+  const tag = $("gamepadTag");
+  if(tag) tag.classList.remove("connected");
+  gamepadActive = false;
+  gamepadSteer = 0;
+});
+
+function pollGamepad(){
+  if(!navigator.getGamepads) return;
+  const pads = navigator.getGamepads();
+  let foundPad = null;
+  for(let i = 0; i < pads.length; i++){
+    if(pads[i] && pads[i].connected){
+      foundPad = pads[i];
+      break;
+    }
+  }
+  if(!foundPad){
+    gamepadSteer = 0;
+    return;
+  }
+
+  if(!gamepadActive){
+    gamepadActive = true;
+    const tag = $("gamepadTag");
+    if(tag) tag.classList.add("connected");
+  }
+
+  // Eixo analógico esquerdo (axes[0]) ou analógico direito (axes[2])
+  let rawX = foundPad.axes[0] || 0;
+  if(Math.abs(rawX) < 0.08 && foundPad.axes.length > 2 && Math.abs(foundPad.axes[2]) > 0.1){
+    rawX = foundPad.axes[2];
+  }
+
+  // Zona morta (deadzone = 0.10) + curva exponencial suave (1.35) para precisão fina no analógico
+  const deadzone = 0.10;
+  if(Math.abs(rawX) > deadzone){
+    const norm = (Math.abs(rawX) - deadzone) / (1.0 - deadzone);
+    gamepadSteer = Math.sign(rawX) * Math.pow(Math.min(1.0, norm), 1.35);
+  } else {
+    // Fallback para D-Pad Esquerda (botão 14) e Direita (botão 15)
+    const dLeft = foundPad.buttons[14] && foundPad.buttons[14].pressed;
+    const dRight = foundPad.buttons[15] && foundPad.buttons[15].pressed;
+    gamepadSteer = dLeft ? -1.0 : (dRight ? 1.0 : 0);
+  }
+
+  // Botões de Turbo: A/Cross (0), B/Circle (1), X/Square (2), RB/R1 (5), RT/R2 (7)
+  const turboPressed = !!(
+    (foundPad.buttons[0] && foundPad.buttons[0].pressed) ||
+    (foundPad.buttons[1] && foundPad.buttons[1].pressed) ||
+    (foundPad.buttons[2] && foundPad.buttons[2].pressed) ||
+    (foundPad.buttons[5] && foundPad.buttons[5].pressed) ||
+    (foundPad.buttons[7] && foundPad.buttons[7].pressed)
+  );
+  if(turboPressed && !prevGpTurbo){
+    if(started && raceUnlocked) activateTurbo();
+    else if(!started && $("btnStart")) $("btnStart").click();
+  }
+  prevGpTurbo = turboPressed;
+
+  // Botão Start (9) para iniciar corrida no menu
+  const startPressed = !!(foundPad.buttons[9] && foundPad.buttons[9].pressed);
+  if(startPressed && !prevGpStart && !started && $("btnStart")){
+    $("btnStart").click();
+  }
+  prevGpStart = startPressed;
+}
+
+/* ============================================================================
+   LOOP DE FÍSICA SIMCADE (DERRAPAGEM COERENTE + SUSPENSÃO SUAVE)
    ========================================================================== */
 let lastMultiplayerSend = 0;
 
 function updatePhysics(){
   if(!started) return;
 
-  // 1. Direção / Curvas com vetor força
-  car.vectorLeftActive = !!(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]);
-  car.vectorRightActive = !!(keysPressed["ArrowRight"] || keysPressed["d"] || keysPressed["D"]);
+  // 1. Leitura de Direção (Analógico Bluetooth ou Teclado/Touch)
+  const keyLeft = !!(keysPressed["ArrowLeft"] || keysPressed["a"] || keysPressed["A"]);
+  const keyRight = !!(keysPressed["ArrowRight"] || keysPressed["d"] || keysPressed["D"]);
 
-  const currentTurnSpeed = car.turnSpeed * Math.max(0.6, gameSpeed);
-
-  let turnDirection = 0;
-  if(car.vectorLeftActive){
-    car.angle -= currentTurnSpeed;
-    turnDirection -= 1;
-    if(Math.random() < 0.15) sTireScreech();
-  }
-  if(car.vectorRightActive){
-    car.angle += currentTurnSpeed;
-    turnDirection += 1;
-    if(Math.random() < 0.15) sTireScreech();
+  let rawSteerTarget = 0;
+  if(Math.abs(gamepadSteer) > 0.01){
+    rawSteerTarget = gamepadSteer;
+  } else {
+    if(keyLeft) rawSteerTarget -= 1.0;
+    if(keyRight) rawSteerTarget += 1.0;
   }
 
-  // 2. Amortecedores / Suspensão Dinâmica com Efeito de Mola (Molejo nas Curvas)
-  const targetRoll = turnDirection * 1.15;
-  car.rollVel = (car.rollVel + (targetRoll - car.roll) * 0.22) * 0.78;
-  car.roll += car.rollVel;
+  // Suavização progressiva da direção
+  const steerLerp = Math.abs(gamepadSteer) > 0.01 ? 0.35 : 0.20;
+  car.steerInput += (rawSteerTarget - car.steerInput) * steerLerp;
+  if(Math.abs(car.steerInput) < 0.01) car.steerInput = 0;
 
-  const targetPitch = car.turboActive ? 0.95 : (car.speed > 0.5 ? 0.28 : 0);
-  car.pitchVel = (car.pitchVel + (targetPitch - car.pitch) * 0.20) * 0.80;
-  car.pitch += car.pitchVel;
+  car.vectorLeftActive = car.steerInput < -0.15;
+  car.vectorRightActive = car.steerInput > 0.15;
 
-  // Oscilação vertical de suspensão (molejo ao fazer curvas e acelerar)
-  car.suspPhase += car.speed * 0.14;
-  const curveJounce = (turnDirection !== 0) ? Math.sin(car.suspPhase * 1.8) * 1.8 : Math.sin(car.suspPhase) * 0.5;
-  car.bounceVel = (car.bounceVel + (curveJounce - car.bounceY) * 0.25) * 0.76;
-  car.bounceY += car.bounceVel;
-
-  const targetSteer = turnDirection * 0.42;
+  // Esterçamento visual das rodas dianteiras proporcional ao analógico
+  const targetSteer = car.steerInput * 0.45;
   car.steerAngle += (targetSteer - car.steerAngle) * 0.25;
 
-  // 3. Velocidade e Turbo
-  const targetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
-  car.speed += (targetSpeed - car.speed) * 0.1;
+  // Enquanto a contagem regressiva 3, 2, 1 não terminar, o carro fica alinhado no grid aguardando o "JÁ!"
+  if(!raceUnlocked){
+    car.speed = 0;
+    car.roll *= 0.85;
+    car.pitch *= 0.85;
+    car.bounceY *= 0.85;
+    return;
+  }
+
+  // 2. Velocidade e Turbo
+  const maxTargetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
+  // Durante derrapagem forte, há leve perda natural de velocidade por atrito lateral dos pneus
+  const driftDrag = Math.abs(car.slipAngle) > 0.16 ? 0.94 : 1.0;
+  car.speed += (maxTargetSpeed * driftDrag - car.speed) * 0.08;
 
   if(car.turboActive){
     car.turboTimer--;
     if(car.turboTimer <= 0) car.turboActive = false;
   } else {
-    car.turboCharge = Math.min(1.0, car.turboCharge + 0.0035);
+    // Derrapar nas curvas ajuda a carregar um pouquinho mais rápido o Turbo!
+    const driftBonus = Math.abs(car.slipAngle) > 0.16 ? 0.0018 : 0;
+    car.turboCharge = Math.min(1.0, car.turboCharge + 0.0035 + driftBonus);
   }
   $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
 
-  // 4. Posição no mundo 3D (X e Z)
-  car.x += Math.cos(car.angle) * car.speed;
-  car.z += Math.sin(car.angle) * car.speed;
+  // 3. Física de Derrapagem "Simcade" Coerente (Ângulo do Bico vs Vetor Velocidade)
+  const speedRatio = Math.min(1.2, car.speed / Math.max(1.0, car.baseSpeed * 0.5));
+  const currentTurnRate = car.turnSpeed * Math.max(0.62, gameSpeed) * speedRatio;
 
-  // 5. Colisão Suave com Barreiras da Pista Extra Larga
+  // O bico do carro gira proporcionalmente ao comando analógico
+  car.angle += car.steerInput * currentTurnRate;
+
+  // O vetor velocidade (car.velAngle) persegue a direção do bico (car.angle) com aderência lateral (grip)
+  // Em curvas fechadas e rápidas, a traseira escorrega suavemente criando um slipAngle coerente!
+  let angleDiff = car.angle - car.velAngle;
+  while(angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+  while(angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+  const isHardCornering = Math.abs(car.steerInput) > 0.55 && car.speed > 2.2;
+  const lateralGrip = isHardCornering ? 0.11 : 0.22;
+  car.velAngle += angleDiff * lateralGrip;
+
+  // Limita o ângulo máximo de derrapagem a ~30 graus (0.52 rad) para nunca rodar descontrolado
+  let slip = car.angle - car.velAngle;
+  while(slip > Math.PI) slip -= Math.PI * 2;
+  while(slip < -Math.PI) slip += Math.PI * 2;
+  const maxSlip = 0.52;
+  if(Math.abs(slip) > maxSlip){
+    slip = Math.sign(slip) * maxSlip;
+    car.velAngle = car.angle - slip;
+  }
+  car.slipAngle = slip;
+
+  if(Math.abs(car.slipAngle) > 0.16 && Math.random() < 0.18){
+    sTireScreech();
+  }
+
+  // 4. Suspensão e Amortecedores Suaves (Inclinação para o lado correto da força centrífuga)
+  const targetRoll = (car.steerInput * 0.75 + car.slipAngle * 0.65) * speedRatio;
+  car.rollVel = (car.rollVel + (targetRoll - car.roll) * 0.12) * 0.82;
+  car.roll += car.rollVel;
+
+  const targetPitch = car.turboActive ? 0.75 : (car.speed > 0.5 ? 0.20 : 0);
+  car.pitchVel = (car.pitchVel + (targetPitch - car.pitch) * 0.12) * 0.84;
+  car.pitch += car.pitchVel;
+
+  // Oscilação vertical sutil e macia da suspensão
+  car.suspPhase += car.speed * 0.10;
+  const curveJounce = (Math.abs(car.steerInput) > 0.15) ? Math.sin(car.suspPhase * 1.4) * 0.75 : Math.sin(car.suspPhase) * 0.22;
+  car.bounceVel = (car.bounceVel + (curveJounce - car.bounceY) * 0.14) * 0.82;
+  car.bounceY += car.bounceVel;
+
+  // 5. Deslocamento no mundo 3D seguindo o vetor velocidade (car.velAngle)
+  car.x += Math.cos(car.velAngle) * car.speed;
+  car.z += Math.sin(car.velAngle) * car.speed;
+
+  // 6. Colisão Suave com Barreiras da Pista
   if(car.bounceTimer > 0) car.bounceTimer--;
 
   const trackInfo = getTrack3DPoint(car.x, car.z);
@@ -726,19 +903,17 @@ function updatePhysics(){
       car.bounceTimer = 10;
       sBounce();
     }
-    // Impulso de molejo ao passar na zebra
-    car.bounceVel += 1.6;
-    car.rollVel += (Math.random() - 0.5) * 0.4;
+    car.bounceVel += 0.75;
 
     let diffAngle = trackInfo.forwardAngle - car.angle;
     while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
     while(diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-    // Desliza suavemente pela zebra sem engasgar nem travar
     car.angle += diffAngle * 0.20;
+    car.velAngle = car.angle;
     car.speed = Math.max(car.speed * 0.94, 1.2);
   }
 
-  // 6. Gravação de telemetria da volta (Fantasma)
+  // 7. Gravação de telemetria da volta (Fantasma)
   if(lapStartTime > 0){
     const elapsed = performance.now() - lapStartTime;
     currentLapFrames.push({
@@ -754,10 +929,10 @@ function updatePhysics(){
     $("lapTimer").textContent = `⏱️ ${formatTime(elapsed)}`;
   }
 
-  // 7. Checkpoints e Voltas
+  // 8. Checkpoints e Voltas
   checkLapProgress();
 
-  // 8. Sincronização Multiplayer via Firebase
+  // 9. Sincronização Multiplayer via Firebase
   if(selectedMode === "multi" && performance.now() - lastMultiplayerSend > 45){
     lastMultiplayerSend = performance.now();
     window.multiplayerManager.updateMyState({
@@ -773,9 +948,10 @@ function updatePhysics(){
     });
   }
 
-  // 9. Atualização no HUD
+  // 10. Atualização no HUD
   const displayKmh = Math.round(car.speed * 20);
-  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "🚀 TURBO!" : ""}`;
+  const driftLabel = Math.abs(car.slipAngle) > 0.18 ? " 💨 DRIFT!" : "";
+  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "🚀 TURBO!" : driftLabel}`;
 }
 
 /* Verificação de Checkpoints ao longo dos 4 quadrantes da pista 3D */
@@ -861,6 +1037,9 @@ function getGhostPose(elapsed){
 function animate(){
   requestAnimationFrame(animate);
 
+  // 0. Leitura do Controle Bluetooth/USB (Gamepad Analógico)
+  pollGamepad();
+
   // 1. Atualiza Física do jogador
   updatePhysics();
 
@@ -868,7 +1047,7 @@ function animate(){
   game3D.updatePlayerCar(car);
 
   // 3. Atualiza Fantasma do recorde (se aplicável)
-  if(started && bestGhostFrames && lapStartTime > 0 && selectedMode === "solo"){
+  if(started && raceUnlocked && bestGhostFrames && lapStartTime > 0 && selectedMode === "solo"){
     const elapsed = performance.now() - lapStartTime;
     game3D.updateGhostCar(getGhostPose(elapsed));
   } else {
@@ -877,7 +1056,7 @@ function animate(){
 
   // 4. Atualiza Multiplayer / Bots em tempo real
   if(selectedMode === "multi"){
-    const delta = 0.016;
+    const delta = raceUnlocked ? 0.016 : 0;
     const others = window.multiplayerManager.updateBots(delta, getBotPoseAtT);
     game3D.updateOtherCars(others);
   }
@@ -937,8 +1116,72 @@ $("btnTurbo").addEventListener("pointercancel", () => $("btnTurbo").classList.re
 /* ============================================================================
    INICIALIZAÇÃO
    ========================================================================== */
+function runStartCountdown(){
+  raceUnlocked = false;
+  const overlay = $("countdownOverlay");
+  const numEl = $("countdownNumber");
+  const subEl = $("countdownSub");
+  if(!overlay || !numEl || !subEl){
+    raceUnlocked = true;
+    lapStartTime = performance.now();
+    return;
+  }
+
+  overlay.classList.add("active");
+
+  const setStep = (text, sub, color, lightStage, isGo) => {
+    numEl.textContent = text;
+    numEl.style.color = color;
+    subEl.textContent = sub;
+    // Reinicia animação pop
+    numEl.style.animation = "none";
+    void numEl.offsetWidth;
+    numEl.style.animation = "countPop 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards";
+    if(game3D && game3D.setTrafficLight) game3D.setTrafficLight(lightStage);
+    sCountdownBeep(isGo);
+  };
+
+  // Etapa 3 (0ms) - Luz Vermelha
+  setStep("3", "PREPARE-SE NO GRID!", "#ff4757", 3, false);
+  speak("3");
+
+  // Etapa 2 (1000ms) - Luz Vermelha
+  setTimeout(() => {
+    setStep("2", "AQUECENDO OS MOTORES...", "#ff6b6b", 2, false);
+    speak("2");
+  }, 1000);
+
+  // Etapa 1 (2000ms) - Luz Amarela
+  setTimeout(() => {
+    setStep("1", "ATENÇÃO NA LARGADA!", "#ffa502", 1, false);
+    speak("1");
+  }, 2000);
+
+  // Etapa JÁ! (3000ms) - Luz Verde + Libera os carros!
+  setTimeout(() => {
+    setStep("JÁ! 🏁", "VAI! VAI! VAI!", "#2ed573", 0, true);
+    speak("Já!");
+    sTurbo();
+    raceUnlocked = true;
+    lapStartTime = performance.now();
+    currentLapFrames = [];
+    prevCarX = car.x;
+
+    if(!musicTimer){
+      musicTimer = setInterval(playRockBeat, 240);
+    }
+  }, 3000);
+
+  // Oculta o overlay após a largada (3850ms)
+  setTimeout(() => {
+    overlay.classList.remove("active");
+  }, 3850);
+}
+
 $("btnStart").addEventListener("click", () => {
+  if(started) return;
   started = true;
+  raceUnlocked = false;
   const roomName = ($("inputRoom").value || "ROCK").toUpperCase().trim();
   const pilotName = ($("inputPilot").value || "Piloto Rock").trim();
 
@@ -969,16 +1212,7 @@ $("btnStart").addEventListener("click", () => {
   $("start").remove();
   try{ ac().resume(); }catch(e){}
   // Não força tela cheia automaticamente - usuário pode ativar via botão ⛶ quando quiser
-  speak("Liguem seus motores! 3, 2, 1, já!");
-  sTurbo();
-
-  lapStartTime = performance.now();
-  currentLapFrames = [];
-  prevCarX = car.x;
-
-  if(!musicTimer){
-    musicTimer = setInterval(playRockBeat, 240);
-  }
+  runStartCountdown();
 });
 
 $("selSpeed").addEventListener("change", e => {

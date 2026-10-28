@@ -340,18 +340,24 @@ class Game3D {
 
     // Semáforo com luzes neon de largada no centro da via
     const roadCenterZ = -halfH + roadWidth / 2;
-    const lampGeo = new THREE.SphereGeometry(4.5, 16, 16);
-    const redLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#ff4757" }));
+    const lampGeo = new THREE.SphereGeometry(5.5, 16, 16);
+    const redMat = new THREE.MeshBasicMaterial({ color: "#4a151b" });
+    const yellowMat = new THREE.MeshBasicMaterial({ color: "#4a3208" });
+    const greenMat = new THREE.MeshBasicMaterial({ color: "#0d4224" });
+
+    const redLight = new THREE.Mesh(lampGeo, redMat);
     redLight.position.set(8, 120, roadCenterZ - 24);
     gantry.add(redLight);
 
-    const yellowLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#ffa502" }));
+    const yellowLight = new THREE.Mesh(lampGeo, yellowMat);
     yellowLight.position.set(8, 120, roadCenterZ);
     gantry.add(yellowLight);
 
-    const greenLight = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: "#2ed573" }));
+    const greenLight = new THREE.Mesh(lampGeo, greenMat);
     greenLight.position.set(8, 120, roadCenterZ + 24);
     gantry.add(greenLight);
+
+    this.gantryLights = { red: redLight, yellow: yellowLight, green: greenLight };
 
     // Linha de chegada quadriculada no chão
     const sqSize = 16;
@@ -839,6 +845,102 @@ class Game3D {
     this.carGroup.add(this.forceVectorArrow);
   }
 
+  setTrafficLight(stage) {
+    if (!this.gantryLights) return;
+    // stage: 3 ou 2 = vermelho, 1 = amarelo, 0 = verde ("JÁ!"), -1 = todos acesos suaves
+    this.gantryLights.red.material.color.set(
+      (stage === 3 || stage === 2 || stage === -1) ? "#ff4757" : "#3a1018"
+    );
+    this.gantryLights.yellow.material.color.set(
+      (stage === 1 || stage === -1) ? "#ffa502" : "#3a2806"
+    );
+    this.gantryLights.green.material.color.set(
+      (stage === 0 || stage === -1) ? "#2ed573" : "#0b381e"
+    );
+
+    const scaleR = (stage === 3 || stage === 2) ? 1.45 : 1.0;
+    const scaleY = (stage === 1) ? 1.45 : 1.0;
+    const scaleG = (stage === 0) ? 1.55 : 1.0;
+    this.gantryLights.red.scale.set(scaleR, scaleR, scaleR);
+    this.gantryLights.yellow.scale.set(scaleY, scaleY, scaleY);
+    this.gantryLights.green.scale.set(scaleG, scaleG, scaleG);
+  }
+
+  spawnDriftEffects(physicsCar) {
+    if (!this.smokeList) {
+      this.smokeList = [];
+      this.skidList = [];
+      this._smokeGeo = new THREE.SphereGeometry(3.2, 8, 8);
+      this._skidGeo = new THREE.PlaneGeometry(6.5, 3.2);
+      this._skidGeo.rotateX(-Math.PI / 2);
+      this._skidMat = new THREE.MeshBasicMaterial({
+        color: "#0b0914",
+        transparent: true,
+        opacity: 0.48,
+        depthWrite: false
+      });
+    }
+
+    const isDrifting = Math.abs(physicsCar.slipAngle || 0) > 0.14 && physicsCar.speed > 1.8;
+
+    if (isDrifting) {
+      const cosA = Math.cos(physicsCar.angle);
+      const sinA = Math.sin(physicsCar.angle);
+
+      // Posições das duas rodas traseiras no mundo (-16 em X local, +-18 em Z local)
+      for (let side of [-18, 18]) {
+        const wx = physicsCar.x - 16 * cosA - side * sinA;
+        const wz = physicsCar.z - 16 * sinA + side * cosA;
+
+        // Marca de pneu no asfalto
+        if (Math.random() < 0.65) {
+          const skid = new THREE.Mesh(this._skidGeo, this._skidMat);
+          skid.position.set(wx, 6.14, wz);
+          skid.rotation.y = -physicsCar.angle;
+          this.scene.add(skid);
+          this.skidList.push({ mesh: skid, age: 0 });
+          if (this.skidList.length > 140) {
+            const old = this.skidList.shift();
+            this.scene.remove(old.mesh);
+          }
+        }
+
+        // Fumaça branca/cinza de derrapagem nos pneus traseiros
+        if (Math.random() < 0.45) {
+          const smMat = new THREE.MeshBasicMaterial({
+            color: "#dfe4ea",
+            transparent: true,
+            opacity: 0.55
+          });
+          const puff = new THREE.Mesh(this._smokeGeo, smMat);
+          puff.position.set(
+            wx + (Math.random() - 0.5) * 4,
+            8 + Math.random() * 2,
+            wz + (Math.random() - 0.5) * 4
+          );
+          this.scene.add(puff);
+          this.smokeList.push({ mesh: puff, life: 1.0 });
+        }
+      }
+    }
+
+    // Atualiza fumaça
+    for (let i = this.smokeList.length - 1; i >= 0; i--) {
+      const s = this.smokeList[i];
+      s.life -= 0.045;
+      if (s.life <= 0) {
+        this.scene.remove(s.mesh);
+        s.mesh.material.dispose();
+        this.smokeList.splice(i, 1);
+      } else {
+        s.mesh.position.y += 0.35;
+        const sc = 1.0 + (1.0 - s.life) * 1.6;
+        s.mesh.scale.set(sc, sc, sc);
+        s.mesh.material.opacity = s.life * 0.5;
+      }
+    }
+  }
+
   updatePlayerCar(physicsCar) {
     if (!this.carGroup) return;
 
@@ -847,22 +949,25 @@ class Game3D {
     this.carGroup.position.z = physicsCar.z;
     this.carGroup.rotation.y = -physicsCar.angle;
 
-    // 1. Molejo completo da Suspensão e Amortecedores (Roll, Pitch e Bounce vertical)
+    // Efeitos de derrapagem Simcade (marcas de pneu e fumaça)
+    this.spawnDriftEffects(physicsCar);
+
+    // 1. Molejo Suave da Suspensão e Amortecedores (Lado corrigido!)
     if (this.carBody) {
       const bounceY = physicsCar.bounceY || 0;
-      // Inclinação lateral (roll) pronunciada nas curvas + empinada (pitch) no turbo/aceleração
-      this.carBody.rotation.x = physicsCar.roll * 0.42;
-      this.carBody.rotation.z = physicsCar.pitch * 0.25;
-      this.carBody.position.y = 13 + bounceY - Math.abs(physicsCar.roll) * 1.4 + physicsCar.pitch * 1.2;
+      // Sinal invertido (-physicsCar.roll) para inclinar para o lado correto da força centrífuga, com movimento suave!
+      this.carBody.rotation.x = -physicsCar.roll * 0.22;
+      this.carBody.rotation.z = physicsCar.pitch * 0.16;
+      this.carBody.position.y = 13 + bounceY - Math.abs(physicsCar.roll) * 0.7 + physicsCar.pitch * 0.8;
 
       if (this.carParts && this.carParts.springs) {
         const r = physicsCar.roll;
         const p = physicsCar.pitch;
-        const b = bounceY * 0.08;
-        this.carParts.springs.fl.scale.y = Math.max(0.4, 1.0 + r * 0.55 + p * 0.35 + b);
-        this.carParts.springs.fr.scale.y = Math.max(0.4, 1.0 - r * 0.55 + p * 0.35 + b);
-        this.carParts.springs.rl.scale.y = Math.max(0.4, 1.0 + r * 0.48 - p * 0.35 + b);
-        this.carParts.springs.rr.scale.y = Math.max(0.4, 1.0 - r * 0.48 - p * 0.35 + b);
+        const b = bounceY * 0.05;
+        this.carParts.springs.fl.scale.y = Math.max(0.55, 1.0 - r * 0.32 + p * 0.22 + b);
+        this.carParts.springs.fr.scale.y = Math.max(0.55, 1.0 + r * 0.32 + p * 0.22 + b);
+        this.carParts.springs.rl.scale.y = Math.max(0.55, 1.0 - r * 0.28 - p * 0.22 + b);
+        this.carParts.springs.rr.scale.y = Math.max(0.55, 1.0 + r * 0.28 - p * 0.22 + b);
       }
 
       // Chamas do escapamento durante o Turbo
@@ -990,8 +1095,8 @@ class Game3D {
       oCar.group.rotation.y = -(p.angle || 0);
 
       if (oCar.bodyGroup) {
-        oCar.bodyGroup.rotation.x = (p.roll || 0) * 0.42;
-        oCar.bodyGroup.rotation.z = (p.pitch || 0) * 0.25;
+        oCar.bodyGroup.rotation.x = -(p.roll || 0) * 0.22;
+        oCar.bodyGroup.rotation.z = (p.pitch || 0) * 0.16;
       }
       if (oCar.wheels) {
         oCar.wheels.fl.rotation.y = -(p.steer || 0);
@@ -1028,8 +1133,8 @@ class Game3D {
     this.ghostGroup.group.rotation.y = -ghostPose.angle;
 
     if (this.ghostGroup.bodyGroup) {
-      this.ghostGroup.bodyGroup.rotation.x = (ghostPose.roll || 0) * 0.42;
-      this.ghostGroup.bodyGroup.rotation.z = (ghostPose.pitch || 0) * 0.25;
+      this.ghostGroup.bodyGroup.rotation.x = -(ghostPose.roll || 0) * 0.22;
+      this.ghostGroup.bodyGroup.rotation.z = (ghostPose.pitch || 0) * 0.16;
     }
     if (this.ghostGroup.wheels) {
       this.ghostGroup.wheels.fl.rotation.y = -(ghostPose.steerAngle || 0);
