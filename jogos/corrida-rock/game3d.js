@@ -739,7 +739,7 @@ class Game3D {
     bodyGroup.add(fl2);
 
     // Lanternas de freio traseiras (-X)
-    const brakeMat = new THREE.MeshBasicMaterial({ color: "#ff4757" });
+    const brakeMat = new THREE.MeshBasicMaterial({ color: "#7a1622" });
     const bl1 = new THREE.Mesh(lampGeo, brakeMat);
     bl1.position.set(-28.1, 0.5, -11);
     bodyGroup.add(bl1);
@@ -795,6 +795,7 @@ class Game3D {
       roofMesh: roof,
       wingMesh: wing,
       flames: { l: flameL, r: flameR },
+      brakeLights: { l: bl1, r: bl2, mat: brakeMat },
       wheels: { fl: wheelFL, fr: wheelFR, rl: wheelRL, rr: wheelRR },
       springs: { fl: sFL, fr: sFR, rl: sRL, rr: sRR },
       setColor: (newColorHex) => {
@@ -881,7 +882,9 @@ class Game3D {
       });
     }
 
-    const isDrifting = Math.abs(physicsCar.slipAngle || 0) > 0.14 && physicsCar.speed > 1.8;
+    const isDrifting =
+      (Math.abs(physicsCar.slipAngle || 0) > 0.14 && Math.abs(physicsCar.speed) > 1.8) ||
+      ((physicsCar.brakeInput || 0) > 0.55 && physicsCar.speed > 2.2);
 
     if (isDrifting) {
       const cosA = Math.cos(physicsCar.angle);
@@ -981,6 +984,15 @@ class Game3D {
           this.carParts.flames.r.scale.set(1, flicker, 1);
         }
       }
+
+      // Lanternas traseiras de Freio (acendem forte quando o jogador pisa no freio)
+      if (this.carParts && this.carParts.brakeLights) {
+        const isBraking = (physicsCar.brakeInput || 0) > 0.08;
+        this.carParts.brakeLights.mat.color.set(isBraking ? "#ff1e38" : "#7a1622");
+        const bScale = isBraking ? 1.35 : 1.0;
+        this.carParts.brakeLights.l.scale.set(bScale, bScale, bScale);
+        this.carParts.brakeLights.r.scale.set(bScale, bScale, bScale);
+      }
     }
 
     // 2. Rodas com esterçamento dianteiro e giro com gomos visíveis
@@ -995,8 +1007,8 @@ class Game3D {
       this.carParts.wheels.rr.rotation.z += spinSpeed;
     }
 
-    // 3. Vetor Força Lateral (+Z = direita, -Z = esquerda)
-    if (physicsCar.vectorLeftActive || physicsCar.vectorRightActive) {
+    // 3. Vetor Força Lateral (+Z = direita, -Z = esquerda) - ocultável para players experientes
+    if (physicsCar.showCurveArrow !== false && (physicsCar.vectorLeftActive || physicsCar.vectorRightActive)) {
       this.forceVectorArrow.visible = true;
       const isLeft = physicsCar.vectorLeftActive;
       this.forceVectorArrow.rotation.y = isLeft ? Math.PI : 0;

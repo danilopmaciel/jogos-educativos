@@ -126,17 +126,17 @@
   #touchControls {
     position:fixed; bottom:0; left:0; right:0; z-index:10;
     display:flex; justify-content:space-between; align-items:flex-end;
-    padding:16px 24px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    padding:12px 16px calc(env(safe-area-inset-bottom, 0px) + 14px);
     pointer-events:none;
   }
   .touch-group {
-    display:flex; gap:16px; pointer-events:auto;
+    display:flex; gap:10px; align-items:flex-end; pointer-events:auto;
   }
   .touch-btn {
-    width:clamp(70px, 16vw, 95px); height:clamp(70px, 16vw, 95px);
+    width:clamp(60px, 14.5vw, 88px); height:clamp(60px, 14.5vw, 88px);
     border-radius:50%; border:3px solid rgba(255,255,255,0.3);
-    background:rgba(20, 16, 45, 0.75); backdrop-filter:blur(8px);
-    color:#fff; font-size:clamp(26px, 6vw, 38px); font-weight:900;
+    background:rgba(20, 16, 45, 0.78); backdrop-filter:blur(8px);
+    color:#fff; font-size:clamp(22px, 5vw, 34px); font-weight:900;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     box-shadow:0 6px 16px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.2);
     touch-action:manipulation; cursor:pointer; transition:transform .1s, background .1s;
@@ -146,6 +146,23 @@
     background:rgba(255, 210, 63, 0.85); color:#120e24;
     box-shadow:0 2px 6px rgba(0,0,0,0.5);
   }
+  .touch-btn-accel {
+    background:linear-gradient(135deg, rgba(16, 185, 129, 0.85), rgba(46, 213, 115, 0.85));
+    border-color:#2ed573; font-size:clamp(18px, 4.2vw, 28px);
+    width:clamp(66px, 15.5vw, 94px); height:clamp(66px, 15.5vw, 94px);
+  }
+  .touch-btn-accel:active, .touch-btn-accel.active {
+    background:linear-gradient(135deg, #2ed573, #7bed9f); color:#0b2e13;
+    transform:scale(0.92) translateY(4px);
+  }
+  .touch-btn-brake {
+    background:linear-gradient(135deg, rgba(220, 38, 38, 0.85), rgba(255, 71, 87, 0.85));
+    border-color:#ff6b81; font-size:clamp(18px, 4vw, 26px);
+  }
+  .touch-btn-brake:active, .touch-btn-brake.active {
+    background:linear-gradient(135deg, #ff4757, #ff6b81); color:#fff;
+    transform:scale(0.92) translateY(4px);
+  }
   .touch-btn-turbo {
     background:linear-gradient(135deg, #ff5f6d, #ff9a44);
     border-color:#ffd23f; font-size:clamp(16px, 3.8vw, 24px);
@@ -154,7 +171,7 @@
     background:linear-gradient(135deg, #ff9a44, #ffd23f);
     transform:scale(0.92) translateY(4px);
   }
-  .btn-label { font-size:clamp(10px, 2.2vw, 13px); font-weight:800; margin-top:-2px; }
+  .btn-label { font-size:clamp(9px, 2vw, 12px); font-weight:800; margin-top:-2px; }
 
   /* Modal de Início e Seleção de Modo */
   #start {
@@ -247,6 +264,7 @@
     <option value="0.80">⚡ 80% (Rápido)</option>
     <option value="1.00">🏎️ 100% (Rock n' Roll)</option>
   </select>
+  <button id="btnArrowToggle" title="Mostrar/ocultar seta indicadora de curva (Modo Experiente)">🏹 Seta: ligada</button>
   <button id="btnFull" title="Tela cheia">⛶ Tela cheia</button>
   <button id="btnTrava" title="Bloqueia teclas do sistema">🔓 Travar teclado</button>
   <button id="btnSound" title="Ligar/Desligar som e música">🔊 Som: ligado</button>
@@ -265,6 +283,14 @@
     </button>
   </div>
   <div class="touch-group">
+    <button class="touch-btn touch-btn-brake" id="btnBrake" title="Frear / Ré">
+      <span>🛑</span>
+      <span class="btn-label">FREIO</span>
+    </button>
+    <button class="touch-btn touch-btn-accel" id="btnAccel" title="Acelerar">
+      <span>🟢</span>
+      <span class="btn-label">ACEL</span>
+    </button>
     <button class="touch-btn touch-btn-turbo" id="btnTurbo" title="Ativar Turbo">
       <span>🚀</span>
       <span class="btn-label">TURBO</span>
@@ -274,8 +300,8 @@
 
 <!-- Modal de Início e Seleção -->
 <div id="start">
-  <h1>Corrida Rock 3D <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v2.0.0 3D</span></h1>
-  <p>Pise fundo com gráficos 3D modernos, amortecedores dinâmicos e modo multiplayer online via Firebase da Google! 🏎️⚡🎸</p>
+  <h1>Corrida Rock 3D <span style="font-size:0.35em; opacity:0.65; vertical-align:middle; background:rgba(255,255,255,0.15); padding:2px 10px; border-radius:12px; color:#fff;">v2.1.0 3D</span></h1>
+  <p>Pise fundo com acelerador, freio de entrada de curva (Trail Braking), amortecedores dinâmicos e multiplayer online! 🏎️⚡🎸</p>
 
   <div class="mode-selector">
     <div class="mode-card selected" id="modeSolo">
@@ -297,15 +323,20 @@
   
   <div class="tip-box">
     <b>💡 Tecnologias e Dicas:</b><br>
-    • <b>Gráficos 3D Real (Three.js):</b> Pista extrudada, sombras, semáforo e iluminação dinâmica.<br>
-    • <b>Amortecedores Realistas:</b> O chassi se inclina nas curvas comprimindo as molas e empina com o turbo!<br>
-    • <b>Flecha Vetor Força:</b> Continua ativa para orientar as crianças de qualquer ângulo.
+    • <b>Aceleração e Freio Simcade:</b> Controle o acelerador nas retas e use o freio antes das curvas para transferir peso e iniciar o drift!<br>
+    • <b>Amortecedores Realistas:</b> O carro empina ao acelerar, mergulha o bico ao frear e inclina nas curvas.<br>
+    • <b>Modo Experiente:</b> Você pode ocultar a seta indicadora de curva abaixo ou no topo da tela.
+    <div style="margin-top:10px; text-align:center;">
+      <button type="button" id="btnStartArrowToggle" style="font:inherit; font-weight:800; font-size:0.95em; padding:6px 16px; border-radius:999px; border:2px solid #7ee8fa; background:rgba(126,232,250,0.18); color:#fff; cursor:pointer;">
+        🏹 Seta de Curva: Ligada (Clique p/ Modo Experiente)
+      </button>
+    </div>
   </div>
 
   <p style="font-size:min(1.9vh,3vw); opacity:0.75;">
-    🎮 <b>Controle Bluetooth / USB:</b> Analógico esquerdo para direção suave &nbsp;•&nbsp; Botão A/R2 para TURBO!<br>
-    🕹️ <b>Teclado:</b> Setas ◀ e ▶ (ou A e D) para virar &nbsp;•&nbsp; <b>Espaço</b> ou ▲ para TURBO!<br>
-    📱 <b>No celular:</b> Use os botões ◀, ▶ e 🚀 TURBO na parte inferior.
+    🎮 <b>Controle Bluetooth / USB:</b> Analógico: Direção &nbsp;•&nbsp; <b>R2 / A</b>: Acelerar &nbsp;•&nbsp; <b>L2 / B</b>: Freio &nbsp;•&nbsp; <b>R1 / X / Y</b>: TURBO!<br>
+    🕹️ <b>Teclado:</b> <b>▲ / W</b>: Acelerar &nbsp;•&nbsp; <b>▼ / S</b>: Freio/Ré &nbsp;•&nbsp; <b>◀ ▶ / A D</b>: Virar &nbsp;•&nbsp; <b>Espaço / Shift</b>: TURBO!<br>
+    📱 <b>No celular:</b> Botões ◀ ▶ à esquerda e pedais 🛑 <b>FREIO</b>, 🟢 <b>ACEL</b> e 🚀 <b>TURBO</b> à direita.
   </p>
   <button id="btnStart">Ligar os Motores!</button>
 </div>
@@ -322,8 +353,8 @@
 <script src="../../lib/audio.js?v=10"></script>
 <script src="../../lib/particulas.js?v=10"></script>
 <script src="../../lib/trava.js?v=10"></script>
-<script src="firebase-config.js?v=5"></script>
-<script src="game3d.js?v=5"></script>
+<script src="firebase-config.js?v=6"></script>
+<script src="game3d.js?v=6"></script>
 
 <script>
 /* ============================================================================
@@ -435,6 +466,9 @@ const car = {
   velAngle: 0, // Direção real do vetor velocidade (Simcade Drift)
   slipAngle: 0, // Ângulo de derrapagem entre o bico e a trajetória
   steerInput: 0, // Direção analógica contínua [-1.0 a +1.0]
+  throttleInput: 0, // Pedal de acelerador [0.0 a 1.0]
+  brakeInput: 0, // Pedal de freio [0.0 a 1.0]
+  showCurveArrow: localStorage.getItem("corridaRock_showArrow") !== "0", // Permite ocultar seta p/ player experiente
   speed: 0,
   baseSpeed: 5.5,
   turnSpeed: 0.052,
@@ -696,14 +730,16 @@ function getBotPoseAtT(progressT){
 }
 
 /* ============================================================================
-   SUPORTE A CONTROLE BLUETOOTH / USB (GAMEPAD API COM ANALÓGICO SUAVE)
+   SUPORTE A CONTROLE BLUETOOTH / USB (GAMEPAD API COM ANALÓGICO E GATILHOS)
    ========================================================================== */
 let gamepadSteer = 0;
+let gamepadThrottle = 0;
+let gamepadBrake = 0;
 let gamepadActive = false;
 let prevGpTurbo = false;
 let prevGpStart = false;
 
-window.addEventListener("gamepadconnected", (e) => {
+window.addEventListener("gamepadconnected", () => {
   const tag = $("gamepadTag");
   if(tag){
     tag.textContent = "🎮 Controle Conectado";
@@ -716,6 +752,8 @@ window.addEventListener("gamepaddisconnected", () => {
   if(tag) tag.classList.remove("connected");
   gamepadActive = false;
   gamepadSteer = 0;
+  gamepadThrottle = 0;
+  gamepadBrake = 0;
 });
 
 function pollGamepad(){
@@ -730,6 +768,8 @@ function pollGamepad(){
   }
   if(!foundPad){
     gamepadSteer = 0;
+    gamepadThrottle = 0;
+    gamepadBrake = 0;
     return;
   }
 
@@ -739,7 +779,7 @@ function pollGamepad(){
     if(tag) tag.classList.add("connected");
   }
 
-  // Eixo analógico esquerdo (axes[0]) ou analógico direito (axes[2])
+  // 1. Direção: Eixo analógico esquerdo (axes[0]) ou analógico direito (axes[2])
   let rawX = foundPad.axes[0] || 0;
   if(Math.abs(rawX) < 0.08 && foundPad.axes.length > 2 && Math.abs(foundPad.axes[2]) > 0.1){
     rawX = foundPad.axes[2];
@@ -757,13 +797,26 @@ function pollGamepad(){
     gamepadSteer = dLeft ? -1.0 : (dRight ? 1.0 : 0);
   }
 
-  // Botões de Turbo: A/Cross (0), B/Circle (1), X/Square (2), RB/R1 (5), RT/R2 (7)
+  // 2. Acelerador Analógico Progressivo: Gatilho Direito RT/R2 (7), Botão A/Cross (0), D-Pad Cima (12) ou Analógico Direito p/ cima (-axes[3])
+  const rtVal = foundPad.buttons[7] ? (foundPad.buttons[7].value || (foundPad.buttons[7].pressed ? 1 : 0)) : 0;
+  const btnA = (foundPad.buttons[0] && foundPad.buttons[0].pressed) ? 1.0 : 0;
+  const dUp = (foundPad.buttons[12] && foundPad.buttons[12].pressed) ? 1.0 : 0;
+  const rStickUp = (foundPad.axes.length > 3 && foundPad.axes[3] < -0.15) ? Math.min(1.0, -foundPad.axes[3]) : 0;
+  gamepadThrottle = Math.max(rtVal, btnA, dUp, rStickUp);
+
+  // 3. Freio Analógico Progressivo: Gatilho Esquerdo LT/L2 (6), Botão B/Circle (1), D-Pad Baixo (13) ou Analógico Direito p/ baixo (+axes[3])
+  const ltVal = foundPad.buttons[6] ? (foundPad.buttons[6].value || (foundPad.buttons[6].pressed ? 1 : 0)) : 0;
+  const btnB = (foundPad.buttons[1] && foundPad.buttons[1].pressed) ? 1.0 : 0;
+  const dDown = (foundPad.buttons[13] && foundPad.buttons[13].pressed) ? 1.0 : 0;
+  const rStickDown = (foundPad.axes.length > 3 && foundPad.axes[3] > 0.15) ? Math.min(1.0, foundPad.axes[3]) : 0;
+  gamepadBrake = Math.max(ltVal, btnB, dDown, rStickDown);
+
+  // 4. Botões de Turbo: X/Square (2), Y/Triangle (3), LB/L1 (4), RB/R1 (5)
   const turboPressed = !!(
-    (foundPad.buttons[0] && foundPad.buttons[0].pressed) ||
-    (foundPad.buttons[1] && foundPad.buttons[1].pressed) ||
     (foundPad.buttons[2] && foundPad.buttons[2].pressed) ||
-    (foundPad.buttons[5] && foundPad.buttons[5].pressed) ||
-    (foundPad.buttons[7] && foundPad.buttons[7].pressed)
+    (foundPad.buttons[3] && foundPad.buttons[3].pressed) ||
+    (foundPad.buttons[4] && foundPad.buttons[4].pressed) ||
+    (foundPad.buttons[5] && foundPad.buttons[5].pressed)
   );
   if(turboPressed && !prevGpTurbo){
     if(started && raceUnlocked) activateTurbo();
@@ -771,8 +824,11 @@ function pollGamepad(){
   }
   prevGpTurbo = turboPressed;
 
-  // Botão Start (9) para iniciar corrida no menu
-  const startPressed = !!(foundPad.buttons[9] && foundPad.buttons[9].pressed);
+  // Botão Start (9) ou Botão A (0) para iniciar corrida no menu inicial
+  const startPressed = !!(
+    (foundPad.buttons[9] && foundPad.buttons[9].pressed) ||
+    (foundPad.buttons[0] && foundPad.buttons[0].pressed)
+  );
   if(startPressed && !prevGpStart && !started && $("btnStart")){
     $("btnStart").click();
   }
@@ -780,7 +836,7 @@ function pollGamepad(){
 }
 
 /* ============================================================================
-   LOOP DE FÍSICA SIMCADE (DERRAPAGEM COERENTE + SUSPENSÃO SUAVE)
+   LOOP DE FÍSICA SIMCADE (ACELERAÇÃO, FREIO, TRAIL-BRAKING DRIFT E SUSPENSÃO)
    ========================================================================== */
 let lastMultiplayerSend = 0;
 
@@ -811,75 +867,127 @@ function updatePhysics(){
   const targetSteer = car.steerInput * 0.45;
   car.steerAngle += (targetSteer - car.steerAngle) * 0.25;
 
+  // Leitura dos Pedais de Aceleração e Freio (Teclado W/S, Setas Cima/Baixo, Touch ou Gatilhos do Controle)
+  const keyAccel = !!(keysPressed["ArrowUp"] || keysPressed["w"] || keysPressed["W"]);
+  const keyBrake = !!(keysPressed["ArrowDown"] || keysPressed["s"] || keysPressed["S"]);
+
+  car.throttleInput = Math.max(keyAccel ? 1.0 : 0, gamepadThrottle);
+  car.brakeInput = Math.max(keyBrake ? 1.0 : 0, gamepadBrake);
+
   // Enquanto a contagem regressiva 3, 2, 1 não terminar, o carro fica alinhado no grid aguardando o "JÁ!"
   if(!raceUnlocked){
     car.speed = 0;
     car.roll *= 0.85;
-    car.pitch *= 0.85;
+    // Permite "acelerar no neutro" durante a contagem fazendo o motor vibrar o chassi!
+    const revPitch = car.throttleInput > 0.1 ? (0.12 + Math.sin(performance.now() * 0.05) * 0.06) * car.throttleInput : 0;
+    car.pitch += (revPitch - car.pitch) * 0.2;
     car.bounceY *= 0.85;
     return;
   }
 
-  // 2. Velocidade e Turbo
+  // 2. Aceleração, Freio, Freio-Motor e Turbo
   const maxTargetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
-  // Durante derrapagem forte, há leve perda natural de velocidade por atrito lateral dos pneus
-  const driftDrag = Math.abs(car.slipAngle) > 0.16 ? 0.94 : 1.0;
-  car.speed += (maxTargetSpeed * driftDrag - car.speed) * 0.08;
+  const driftDrag = Math.abs(car.slipAngle) > 0.16 ? 0.93 : 1.0;
 
   if(car.turboActive){
+    // Turbo impulsiona com força máxima mesmo sem segurar o acelerador
+    car.speed += (maxTargetSpeed * driftDrag - car.speed) * 0.11;
     car.turboTimer--;
     if(car.turboTimer <= 0) car.turboActive = false;
   } else {
-    // Derrapar nas curvas ajuda a carregar um pouquinho mais rápido o Turbo!
-    const driftBonus = Math.abs(car.slipAngle) > 0.16 ? 0.0018 : 0;
-    car.turboCharge = Math.min(1.0, car.turboCharge + 0.0035 + driftBonus);
+    if(car.brakeInput > 0.05 && car.speed > 0.08){
+      // Frenagem progressiva real
+      const brakeDecel = 0.16 * car.brakeInput * Math.max(0.65, gameSpeed);
+      car.speed = Math.max(0, car.speed - brakeDecel);
+      if(car.brakeInput > 0.5 && car.speed > 2.2 && Math.random() < 0.22){
+        sTireScreech();
+      }
+    } else if(car.throttleInput > 0.02){
+      // Aceleração progressiva proporcional ao pedal/gatilho
+      const targetSpeed = maxTargetSpeed * car.throttleInput * driftDrag;
+      const accelRate = (car.speed < targetSpeed) ? (0.068 * car.throttleInput) : 0.03;
+      car.speed += (targetSpeed - car.speed) * accelRate;
+    } else if(car.brakeInput > 0.05 && car.speed <= 0.08){
+      // Marcha à ré suave quando o carro já parou e o jogador continua segurando o freio
+      const maxReverse = -car.baseSpeed * 0.35 * gameSpeed;
+      car.speed = Math.max(maxReverse, car.speed - 0.045 * car.brakeInput);
+    } else {
+      // Desaceleração natural suave por inércia / freio-motor (Coasting)
+      car.speed *= 0.985;
+      if(Math.abs(car.speed) < 0.03) car.speed = 0;
+    }
+
+    // Recarga do Turbo (acelerar e derrapar nas curvas carrega mais rápido!)
+    const driftBonus = Math.abs(car.slipAngle) > 0.16 ? 0.0022 : 0;
+    const moveBonus = Math.abs(car.speed) > 0.5 ? 0.0032 : 0.0010;
+    car.turboCharge = Math.min(1.0, car.turboCharge + moveBonus + driftBonus);
   }
   $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
 
-  // 3. Física de Derrapagem "Simcade" Coerente (Ângulo do Bico vs Vetor Velocidade)
-  const speedRatio = Math.min(1.2, car.speed / Math.max(1.0, car.baseSpeed * 0.5));
-  const currentTurnRate = car.turnSpeed * Math.max(0.62, gameSpeed) * speedRatio;
+  // 3. Física de Derrapagem "Simcade" Coerente + Trail Braking (Freio de entrada de curva)
+  const absSpeed = Math.abs(car.speed);
+  const speedRatio = Math.min(1.2, absSpeed / Math.max(0.9, car.baseSpeed * 0.45));
+  const moveDir = car.speed < -0.05 ? -1 : 1;
 
-  // O bico do carro gira proporcionalmente ao comando analógico
-  car.angle += car.steerInput * currentTurnRate;
+  // Frear enquanto esterça transfere peso para as rodas da frente e ajuda a apontar o bico (Trail Braking)
+  const isTrailBraking = car.brakeInput > 0.15 && Math.abs(car.steerInput) > 0.25 && car.speed > 1.6;
+  const trailBrakeTurnBoost = isTrailBraking ? (1.0 + car.brakeInput * 0.22) : 1.0;
+  const currentTurnRate = car.turnSpeed * Math.max(0.62, gameSpeed) * speedRatio * trailBrakeTurnBoost * moveDir;
+
+  // O bico do carro gira proporcionalmente ao comando analógico quando há movimento
+  if(absSpeed > 0.03){
+    car.angle += car.steerInput * currentTurnRate;
+  }
 
   // O vetor velocidade (car.velAngle) persegue a direção do bico (car.angle) com aderência lateral (grip)
-  // Em curvas fechadas e rápidas, a traseira escorrega suavemente criando um slipAngle coerente!
-  let angleDiff = car.angle - car.velAngle;
-  while(angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-  while(angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+  // Em curvas fechadas ou ao acionar o freio na curva (Trail Braking), a traseira escorrega suavemente!
+  if(car.speed < -0.05){
+    car.velAngle = car.angle;
+    car.slipAngle = 0;
+  } else {
+    let angleDiff = car.angle - car.velAngle;
+    while(angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while(angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-  const isHardCornering = Math.abs(car.steerInput) > 0.55 && car.speed > 2.2;
-  const lateralGrip = isHardCornering ? 0.11 : 0.22;
-  car.velAngle += angleDiff * lateralGrip;
+    const isHardCornering = Math.abs(car.steerInput) > 0.55 && car.speed > 2.2;
+    const lateralGrip = isTrailBraking ? 0.075 : (isHardCornering ? 0.11 : 0.22);
+    car.velAngle += angleDiff * lateralGrip;
 
-  // Limita o ângulo máximo de derrapagem a ~30 graus (0.52 rad) para nunca rodar descontrolado
-  let slip = car.angle - car.velAngle;
-  while(slip > Math.PI) slip -= Math.PI * 2;
-  while(slip < -Math.PI) slip += Math.PI * 2;
-  const maxSlip = 0.52;
-  if(Math.abs(slip) > maxSlip){
-    slip = Math.sign(slip) * maxSlip;
-    car.velAngle = car.angle - slip;
+    // Limita o ângulo máximo de derrapagem a ~32 graus (0.56 rad) para nunca rodar descontrolado
+    let slip = car.angle - car.velAngle;
+    while(slip > Math.PI) slip -= Math.PI * 2;
+    while(slip < -Math.PI) slip += Math.PI * 2;
+    const maxSlip = 0.56;
+    if(Math.abs(slip) > maxSlip){
+      slip = Math.sign(slip) * maxSlip;
+      car.velAngle = car.angle - slip;
+    }
+    car.slipAngle = (absSpeed > 0.4) ? slip : 0;
   }
-  car.slipAngle = slip;
 
   if(Math.abs(car.slipAngle) > 0.16 && Math.random() < 0.18){
     sTireScreech();
   }
 
-  // 4. Suspensão e Amortecedores Suaves (Inclinação para o lado correto da força centrífuga)
+  // 4. Suspensão e Amortecedores Suaves (Inclinação lateral + Mergulho de freio / Empinada de aceleração)
   const targetRoll = (car.steerInput * 0.75 + car.slipAngle * 0.65) * speedRatio;
   car.rollVel = (car.rollVel + (targetRoll - car.roll) * 0.12) * 0.82;
   car.roll += car.rollVel;
 
-  const targetPitch = car.turboActive ? 0.75 : (car.speed > 0.5 ? 0.20 : 0);
+  let targetPitch = 0;
+  if(car.turboActive){
+    targetPitch = 0.78; // Empina forte no Turbo
+  } else if(car.brakeInput > 0.08 && car.speed > 0.25){
+    targetPitch = -0.58 * car.brakeInput; // Mergulha o bico ao frear (Nose Dive)
+  } else if(car.throttleInput > 0.08 && car.speed >= 0){
+    targetPitch = 0.28 * car.throttleInput; // Levanta levemente a frente ao acelerar (Squat)
+  }
   car.pitchVel = (car.pitchVel + (targetPitch - car.pitch) * 0.12) * 0.84;
   car.pitch += car.pitchVel;
 
   // Oscilação vertical sutil e macia da suspensão
-  car.suspPhase += car.speed * 0.10;
-  const curveJounce = (Math.abs(car.steerInput) > 0.15) ? Math.sin(car.suspPhase * 1.4) * 0.75 : Math.sin(car.suspPhase) * 0.22;
+  car.suspPhase += absSpeed * 0.10;
+  const curveJounce = (Math.abs(car.steerInput) > 0.15 && absSpeed > 0.5) ? Math.sin(car.suspPhase * 1.4) * 0.75 : Math.sin(car.suspPhase) * 0.22 * speedRatio;
   car.bounceVel = (car.bounceVel + (curveJounce - car.bounceY) * 0.14) * 0.82;
   car.bounceY += car.bounceVel;
 
@@ -910,7 +1018,7 @@ function updatePhysics(){
     while(diffAngle < -Math.PI) diffAngle += Math.PI * 2;
     car.angle += diffAngle * 0.20;
     car.velAngle = car.angle;
-    car.speed = Math.max(car.speed * 0.94, 1.2);
+    car.speed *= 0.88;
   }
 
   // 7. Gravação de telemetria da volta (Fantasma)
@@ -949,9 +1057,13 @@ function updatePhysics(){
   }
 
   // 10. Atualização no HUD
-  const displayKmh = Math.round(car.speed * 20);
-  const driftLabel = Math.abs(car.slipAngle) > 0.18 ? " 💨 DRIFT!" : "";
-  $("speedGauge").textContent = `${displayKmh} km/h ${car.turboActive ? "🚀 TURBO!" : driftLabel}`;
+  const displayKmh = Math.round(Math.abs(car.speed) * 20);
+  let statusBadge = "";
+  if(car.turboActive) statusBadge = "🚀 TURBO!";
+  else if(car.speed < -0.1) statusBadge = "◀ RÉ";
+  else if(Math.abs(car.slipAngle) > 0.18) statusBadge = "💨 DRIFT!";
+  else if(car.brakeInput > 0.2 && car.speed > 0.2) statusBadge = "🛑 FREIO";
+  $("speedGauge").textContent = `${displayKmh} km/h ${statusBadge}`;
 }
 
 /* Verificação de Checkpoints ao longo dos 4 quadrantes da pista 3D */
@@ -1072,11 +1184,11 @@ requestAnimationFrame(animate);
 function onKeyDown(e){
   if(!travaOn && (e.key === "F5" || e.key === "F11" || e.key === "F12")) return;
   if(!travaOn && (e.metaKey || e.ctrlKey || e.altKey)) return;
-  e.preventDefault();
   if(!started) return;
+  e.preventDefault();
 
   keysPressed[e.key] = true;
-  if(e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W"){
+  if(e.key === " " || e.key === "Shift" || e.key === "e" || e.key === "E"){
     activateTurbo();
   }
 }
@@ -1087,6 +1199,7 @@ window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
 
 function bindTouch(btn, keyName){
+  if(!btn) return;
   btn.addEventListener("pointerdown", e => {
     e.preventDefault();
     btn.classList.add("active");
@@ -1104,6 +1217,8 @@ function bindTouch(btn, keyName){
 
 bindTouch($("btnLeft"), "ArrowLeft");
 bindTouch($("btnRight"), "ArrowRight");
+bindTouch($("btnAccel"), "ArrowUp");
+bindTouch($("btnBrake"), "ArrowDown");
 
 $("btnTurbo").addEventListener("pointerdown", e => {
   e.preventDefault();
@@ -1112,6 +1227,36 @@ $("btnTurbo").addEventListener("pointerdown", e => {
 });
 $("btnTurbo").addEventListener("pointerup", () => $("btnTurbo").classList.remove("active"));
 $("btnTurbo").addEventListener("pointercancel", () => $("btnTurbo").classList.remove("active"));
+
+/* Alternância da Seta Indicadora de Curva (Modo Iniciante vs Modo Experiente) */
+function syncArrowToggleUI(){
+  const btnTop = $("btnArrowToggle");
+  if(btnTop){
+    btnTop.textContent = car.showCurveArrow ? "🏹 Seta: ligada" : "🔥 Seta: oculta (Pro)";
+  }
+  const btnStartModal = $("btnStartArrowToggle");
+  if(btnStartModal){
+    if(car.showCurveArrow){
+      btnStartModal.textContent = "🏹 Seta de Curva: Ligada (Clique p/ Modo Experiente)";
+      btnStartModal.style.borderColor = "#7ee8fa";
+      btnStartModal.style.background = "rgba(126,232,250,0.18)";
+    } else {
+      btnStartModal.textContent = "🔥 Modo Experiente: Seta de Curva Oculta";
+      btnStartModal.style.borderColor = "#ffd23f";
+      btnStartModal.style.background = "rgba(255,210,63,0.22)";
+    }
+  }
+}
+
+function toggleCurveArrow(){
+  car.showCurveArrow = !car.showCurveArrow;
+  try { localStorage.setItem("corridaRock_showArrow", car.showCurveArrow ? "1" : "0"); } catch(e){}
+  syncArrowToggleUI();
+}
+
+if($("btnArrowToggle")) $("btnArrowToggle").addEventListener("click", toggleCurveArrow);
+if($("btnStartArrowToggle")) $("btnStartArrowToggle").addEventListener("click", toggleCurveArrow);
+syncArrowToggleUI();
 
 /* ============================================================================
    INICIALIZAÇÃO
