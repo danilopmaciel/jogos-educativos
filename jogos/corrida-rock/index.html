@@ -937,52 +937,71 @@ function updatePhysics(){
   }
   $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
 
-  // 3. Física de Derrapagem "Simcade" Coerente + Trail Braking (Freio de entrada de curva)
+  // 3. Física Simcade com Aderência Reduzida em Alta Velocidade (Exige Frenagem nas Curvas!)
   const absSpeed = Math.abs(car.speed);
-  const speedRatio = Math.min(1.2, absSpeed / Math.max(0.9, car.baseSpeed * 0.45));
+  const normalTopSpeed = Math.max(0.8, car.baseSpeed * gameSpeed);
+  // Nível de excesso de velocidade para curva: acima de 52% da velocidade máxima, os pneus começam a espalhar (understeer/inércia)
+  const excessCornerSpeed = Math.max(0, (absSpeed - normalTopSpeed * 0.52) / (normalTopSpeed * 0.48));
+  const lowSpeedRamp = Math.min(1.0, absSpeed / Math.max(0.4, normalTopSpeed * 0.25));
   const moveDir = car.speed < -0.05 ? -1 : 1;
 
-  // Frear enquanto esterça transfere peso para as rodas da frente e ajuda a apontar o bico (Trail Braking)
-  const isTrailBraking = car.brakeInput > 0.15 && Math.abs(car.steerInput) > 0.25 && car.speed > 1.6;
-  const trailBrakeTurnBoost = isTrailBraking ? (1.0 + car.brakeInput * 0.22) : 1.0;
-  const currentTurnRate = car.turnSpeed * Math.max(0.62, gameSpeed) * speedRatio * trailBrakeTurnBoost * moveDir;
+  // Frear na entrada da curva (Trail Braking) transfere peso para a dianteira, devolvendo aderência direcional ao bico!
+  const isTrailBraking = car.brakeInput > 0.12 && Math.abs(car.steerInput) > 0.20 && car.speed > normalTopSpeed * 0.35;
+  // Sem frear em alta velocidade, a frente espalha (understeer severo = 0.40); freando, o bico aponta firme na tangente!
+  const understeerPenalty = isTrailBraking
+    ? Math.max(0.82, 1.18 - excessCornerSpeed * 0.22)
+    : Math.max(0.34, 1.0 - excessCornerSpeed * 0.58);
 
-  // O bico do carro gira proporcionalmente ao comando analógico quando há movimento
+  const currentTurnRate = car.turnSpeed * Math.max(0.62, gameSpeed) * lowSpeedRamp * understeerPenalty * moveDir;
+
+  // O bico do carro gira proporcionalmente ao comando analógico e à aderência disponível na dianteira
   if(absSpeed > 0.03){
     car.angle += car.steerInput * currentTurnRate;
   }
 
-  // O vetor velocidade (car.velAngle) persegue a direção do bico (car.angle) com aderência lateral (grip)
-  // Em curvas fechadas ou ao acionar o freio na curva (Trail Braking), a traseira escorrega suavemente!
+  // O vetor velocidade (car.velAngle) tem aderência lateral limitada no asfalto:
+  // Se entrar rápido demais sem frear, a inércia centrífuga carrega o carro para fora da curva!
   if(car.speed < -0.05){
     car.velAngle = car.angle;
     car.slipAngle = 0;
   } else {
-    let angleDiff = car.angle - car.velAngle;
-    while(angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-    while(angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-    const isHardCornering = Math.abs(car.steerInput) > 0.55 && car.speed > 2.2;
-    const lateralGrip = isTrailBraking ? 0.075 : (isHardCornering ? 0.11 : 0.22);
-    car.velAngle += angleDiff * lateralGrip;
-
-    // Limita o ângulo máximo de derrapagem a ~32 graus (0.56 rad) para nunca rodar descontrolado
-    let slip = car.angle - car.velAngle;
-    while(slip > Math.PI) slip -= Math.PI * 2;
-    while(slip < -Math.PI) slip += Math.PI * 2;
-    const maxSlip = 0.56;
-    if(Math.abs(slip) > maxSlip){
-      slip = Math.sign(slip) * maxSlip;
-      car.velAngle = car.angle - slip;
+    // Limita apenas o quanto o bico pode desgarrar do vetor velocidade (nunca puxa o vetor velocidade à força!)
+    let rawSlip = car.angle - car.velAngle;
+    while(rawSlip > Math.PI) rawSlip -= Math.PI * 2;
+    while(rawSlip < -Math.PI) rawSlip += Math.PI * 2;
+    const maxSlip = 0.64;
+    if(Math.abs(rawSlip) > maxSlip){
+      rawSlip = Math.sign(rawSlip) * maxSlip;
+      car.angle = car.velAngle + rawSlip;
     }
-    car.slipAngle = (absSpeed > 0.4) ? slip : 0;
+
+    // Aderência lateral dos pneus cai drasticamente se tentar fazer a curva acelerando tudo em alta velocidade
+    const baseGrip = 0.095;
+    const highSpeedGripLoss = Math.max(0.22, 1.0 - excessCornerSpeed * 0.76);
+    const throttleUndersteer = (car.throttleInput > 0.3 && excessCornerSpeed > 0.25) ? 0.72 : 1.0;
+    const brakeGripRecovery = isTrailBraking ? 1.35 : 1.0;
+
+    const lateralGrip = Math.min(0.11, baseGrip * highSpeedGripLoss * throttleUndersteer * brakeGripRecovery);
+    car.velAngle += rawSlip * lateralGrip;
+
+    let finalSlip = car.angle - car.velAngle;
+    while(finalSlip > Math.PI) finalSlip -= Math.PI * 2;
+    while(finalSlip < -Math.PI) finalSlip += Math.PI * 2;
+    car.slipAngle = (absSpeed > 0.35) ? finalSlip : 0;
+
+    // Atrito lateral dos pneus quando o carro escorrega de lado na curva (reduz velocidade proporcionalmente à derrapagem)
+    if(Math.abs(car.slipAngle) > 0.12 && Math.abs(car.steerInput) > 0.2){
+      const tireScrub = Math.min(0.032, Math.abs(car.slipAngle) * 0.042);
+      car.speed *= (1.0 - tireScrub);
+    }
   }
 
-  if(Math.abs(car.slipAngle) > 0.16 && Math.random() < 0.18){
+  if((Math.abs(car.slipAngle) > 0.14 || (excessCornerSpeed > 0.45 && Math.abs(car.steerInput) > 0.5)) && Math.random() < 0.22){
     sTireScreech();
   }
 
   // 4. Suspensão e Amortecedores Suaves (Inclinação lateral + Mergulho de freio / Empinada de aceleração)
+  const speedRatio = Math.min(1.2, absSpeed / Math.max(0.8, normalTopSpeed * 0.5));
   const targetRoll = (car.steerInput * 0.75 + car.slipAngle * 0.65) * speedRatio;
   car.rollVel = (car.rollVel + (targetRoll - car.roll) * 0.12) * 0.82;
   car.roll += car.rollVel;
@@ -1008,7 +1027,7 @@ function updatePhysics(){
   car.x += Math.cos(car.velAngle) * car.speed;
   car.z += Math.sin(car.velAngle) * car.speed;
 
-  // 6. Colisão Suave com Barreiras da Pista
+  // 6. Colisão Punitiva com Guard-Rail / Zebras Externas (Impede fazer a curva escorado no muro!)
   if(car.bounceTimer > 0) car.bounceTimer--;
 
   const trackInfo = getTrack3DPoint(car.x, car.z);
@@ -1020,18 +1039,25 @@ function updatePhysics(){
     car.x = trackInfo.cx + (car.x - trackInfo.cx) * pushFactor;
     car.z = trackInfo.cz + (car.z - trackInfo.cz) * pushFactor;
 
+    // Calcula severidade do ângulo de batida contra o muro (0 = raspando paralelo, 1 = batida de frente)
+    const impactSeverity = Math.abs(Math.sin(car.velAngle - trackInfo.forwardAngle));
+
     if(car.bounceTimer === 0){
-      car.bounceTimer = 10;
+      car.bounceTimer = 14;
       sBounce();
+      // Pancada no muro sem frear pune fortemente a velocidade!
+      car.speed *= Math.max(0.28, 0.70 - impactSeverity * 0.45);
     }
-    car.bounceVel += 0.75;
+    car.bounceVel += 0.85;
+
+    // Atrito contínuo se continuar raspando no muro (impede "wall-riding")
+    car.speed *= 0.88;
 
     let diffAngle = trackInfo.forwardAngle - car.angle;
     while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
     while(diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-    car.angle += diffAngle * 0.20;
+    car.angle += diffAngle * 0.08;
     car.velAngle = car.angle;
-    car.speed *= 0.88;
   }
 
   // 7. Gravação de telemetria da volta (Fantasma - apenas modo Tomada de Tempo)
