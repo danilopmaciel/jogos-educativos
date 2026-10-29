@@ -377,6 +377,7 @@ $("modeSolo").addEventListener("click", () => {
   $("modeMulti").classList.remove("selected");
   $("multiInputs").classList.remove("show");
   $("multiplayerTag").textContent = "⏱️ Tomada de Tempo";
+  if($("bestLapInfo")) $("bestLapInfo").style.display = "";
 });
 
 $("modeMulti").addEventListener("click", () => {
@@ -385,6 +386,7 @@ $("modeMulti").addEventListener("click", () => {
   $("modeSolo").classList.remove("selected");
   $("multiInputs").classList.add("show");
   $("multiplayerTag").textContent = "👥 Sala: " + ($("inputRoom").value || "ROCK");
+  if($("bestLapInfo")) $("bestLapInfo").style.display = "none";
 });
 
 /* ============================================================================
@@ -1021,19 +1023,21 @@ function updatePhysics(){
     car.speed *= 0.88;
   }
 
-  // 7. Gravação de telemetria da volta (Fantasma)
+  // 7. Gravação de telemetria da volta (Fantasma - apenas modo Tomada de Tempo)
   if(lapStartTime > 0){
     const elapsed = performance.now() - lapStartTime;
-    currentLapFrames.push({
-      t: elapsed,
-      x: car.x,
-      z: car.z,
-      angle: car.angle,
-      turbo: car.turboActive,
-      roll: car.roll,
-      pitch: car.pitch,
-      steerAngle: car.steerAngle
-    });
+    if(selectedMode === "solo"){
+      currentLapFrames.push({
+        t: elapsed,
+        x: car.x,
+        z: car.z,
+        angle: car.angle,
+        turbo: car.turboActive,
+        roll: car.roll,
+        pitch: car.pitch,
+        steerAngle: car.steerAngle
+      });
+    }
     $("lapTimer").textContent = `⏱️ ${formatTime(elapsed)}`;
   }
 
@@ -1084,25 +1088,31 @@ function checkLapProgress(){
     const lapDuration = now - lapStartTime;
     totalLapsCompleted++;
 
-    const isRecord = !bestLapTime || lapDuration < bestLapTime;
-    if(isRecord){
-      bestLapTime = lapDuration;
-      bestGhostFrames = currentLapFrames.slice();
-      bestGhostDuration = lapDuration;
-
+    if(selectedMode === "multi"){
+      // No modo Multiplayer: sem narração de voz e sem tempo de recorde
       sLapFanfare();
-      confetti();
-      speak(`Novo recorde! ${formatTimeSpeech(lapDuration)}!`);
-      showLapBanner(`🏆 NOVO RECORDE: ${formatTime(lapDuration)}!`, true);
-
-      const bestEl = $("bestLapInfo");
-      bestEl.textContent = `⭐ Recorde: ${formatTime(bestLapTime)}`;
-      bestEl.classList.add("record-pulse");
-      setTimeout(() => bestEl.classList.remove("record-pulse"), 3500);
+      showLapBanner(`🏁 Volta ${totalLapsCompleted}`, false);
     } else {
-      sLapFanfare();
-      speak(`Volta completa! ${formatTimeSpeech(lapDuration)}`);
-      showLapBanner(`🏁 Volta ${totalLapsCompleted}: ${formatTime(lapDuration)}`, false);
+      const isRecord = !bestLapTime || lapDuration < bestLapTime;
+      if(isRecord){
+        bestLapTime = lapDuration;
+        bestGhostFrames = currentLapFrames.slice();
+        bestGhostDuration = lapDuration;
+
+        sLapFanfare();
+        confetti();
+        speak(`Novo recorde! ${formatTimeSpeech(lapDuration)}!`);
+        showLapBanner(`🏆 NOVO RECORDE: ${formatTime(lapDuration)}!`, true);
+
+        const bestEl = $("bestLapInfo");
+        bestEl.textContent = `⭐ Recorde: ${formatTime(bestLapTime)}`;
+        bestEl.classList.add("record-pulse");
+        setTimeout(() => bestEl.classList.remove("record-pulse"), 3500);
+      } else {
+        sLapFanfare();
+        speak(`Volta completa! ${formatTimeSpeech(lapDuration)}`);
+        showLapBanner(`🏁 Volta ${totalLapsCompleted}: ${formatTime(lapDuration)}`, false);
+      }
     }
 
     $("lapCounter").textContent = `🏁 Voltas: ${totalLapsCompleted}`;
@@ -1288,24 +1298,24 @@ function runStartCountdown(){
 
   // Etapa 3 (0ms) - Luz Vermelha
   setStep("3", "PREPARE-SE NO GRID!", "#ff4757", 3, false);
-  speak("3");
+  if(selectedMode === "solo") speak("3");
 
   // Etapa 2 (1000ms) - Luz Vermelha
   setTimeout(() => {
     setStep("2", "AQUECENDO OS MOTORES...", "#ff6b6b", 2, false);
-    speak("2");
+    if(selectedMode === "solo") speak("2");
   }, 1000);
 
   // Etapa 1 (2000ms) - Luz Amarela
   setTimeout(() => {
     setStep("1", "ATENÇÃO NA LARGADA!", "#ffa502", 1, false);
-    speak("1");
+    if(selectedMode === "solo") speak("1");
   }, 2000);
 
   // Etapa JÁ! (3000ms) - Luz Verde + Libera os carros!
   setTimeout(() => {
     setStep("JÁ! 🏁", "VAI! VAI! VAI!", "#2ed573", 0, true);
-    speak("Já!");
+    if(selectedMode === "solo") speak("Já!");
     sTurbo();
     raceUnlocked = true;
     lapStartTime = performance.now();
@@ -1331,6 +1341,7 @@ $("btnStart").addEventListener("click", () => {
   const pilotName = ($("inputPilot").value || "Piloto Rock").trim();
 
   if(selectedMode === "multi"){
+    if($("bestLapInfo")) $("bestLapInfo").style.display = "none";
     // Posiciona cada jogador em um ponto ligeiramente diferente do grid de largada e com cor própria
     car.x = Math.round(-35 + Math.random() * 50);
     car.z = Math.round(-255 + (Math.random() * 50 - 25));
