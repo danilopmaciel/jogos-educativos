@@ -353,8 +353,8 @@
 <script src="../../lib/audio.js?v=10"></script>
 <script src="../../lib/particulas.js?v=10"></script>
 <script src="../../lib/trava.js?v=10"></script>
-<script src="firebase-config.js?v=6"></script>
-<script src="game3d.js?v=6"></script>
+<script src="firebase-config.js?v=7"></script>
+<script src="game3d.js?v=7"></script>
 
 <script>
 /* ============================================================================
@@ -466,7 +466,9 @@ const car = {
   z: -255, // Posicionado atrás da linha de largada sob o pórtico
   angle: 0, // Direção para onde o bico do carro aponta (+X)
   velAngle: 0, // Direção real do vetor velocidade (Simcade Drift)
+  yawRate: 0, // Velocidade angular de guinada do chassi (inércia rotacional RWD)
   slipAngle: 0, // Ângulo de derrapagem entre o bico e a trajetória
+  rearWheelSpin: 0, // Destracionamento das rodas traseiras (Tração Traseira RWD: burnout / power oversteer)
   steerInput: 0, // Direção analógica contínua [-1.0 a +1.0]
   throttleInput: 0, // Pedal de acelerador [0.0 a 1.0]
   brakeInput: 0, // Pedal de freio [0.0 a 1.0]
@@ -884,23 +886,34 @@ function updatePhysics(){
   // Enquanto a contagem regressiva 3, 2, 1 não terminar, o carro fica alinhado no grid aguardando o "JÁ!"
   if(!raceUnlocked){
     car.speed = 0;
+    car.yawRate = 0;
     car.roll *= 0.85;
-    // Permite "acelerar no neutro" durante a contagem fazendo o motor vibrar o chassi!
-    const revPitch = car.throttleInput > 0.1 ? (0.12 + Math.sin(performance.now() * 0.05) * 0.06) * car.throttleInput : 0;
+    // Permite "acelerar no neutro" ou fritar pneu traseiro (burnout no grid!) durante a contagem
+    car.rearWheelSpin = car.throttleInput > 0.55 ? (car.throttleInput - 0.45) * 1.2 : 0;
+    const revPitch = car.throttleInput > 0.1 ? (0.14 + Math.sin(performance.now() * 0.055) * 0.06) * car.throttleInput : 0;
     car.pitch += (revPitch - car.pitch) * 0.2;
     car.bounceY *= 0.85;
+    if(car.rearWheelSpin > 0.35 && Math.random() < 0.18) sTireScreech();
     return;
   }
 
-  // 2. Aceleração Progressiva, Freio, Freio-Motor e Turbo
+  // 2. Powertrain de Tração Traseira (RWD): Aceleração Progressiva, Burnout, Freio e Turbo
+  const normalTopSpeed = Math.max(0.8, car.baseSpeed * gameSpeed);
   const maxTargetSpeed = (car.turboActive ? car.baseSpeed * 1.85 : car.baseSpeed) * gameSpeed;
-  const driftDrag = Math.abs(car.slipAngle) > 0.16 ? 0.93 : 1.0;
+  // Derrapagem muito angulada + pneu traseiro patinando reduz o empuxo líquido para frente
+  const driftDrag = Math.max(0.76, 1.0 - Math.max(0, Math.abs(car.slipAngle) - 0.16) * 0.32);
+
+  // Detecta Burnout (segurar Freio + Acelerador juntos em baixa velocidade trava as dianteiras e frita as traseiras!)
+  const isBurnout = !car.turboActive && car.brakeInput > 0.4 && car.throttleInput > 0.45 && Math.abs(car.speed) < normalTopSpeed * 0.28;
 
   if(car.turboActive){
-    // Turbo impulsiona com empuxo progressivo e forte
+    // Turbo joga potência brutal nas rodas traseiras
     car.speed += (maxTargetSpeed * driftDrag - car.speed) * 0.055;
     car.turboTimer--;
     if(car.turboTimer <= 0) car.turboActive = false;
+  } else if(isBurnout){
+    car.speed *= 0.86;
+    if(Math.random() < 0.28) sTireScreech();
   } else {
     if(car.brakeInput > 0.05 && car.speed > 0.08){
       // Frenagem progressiva real
@@ -910,11 +923,12 @@ function updatePhysics(){
         sTireScreech();
       }
     } else if(car.throttleInput > 0.02){
-      // Aceleração com curva de torque progressiva (sai da inércia suavemente, ganha giro no meio e estabiliza no topo)
+      // Aceleração RWD com curva de torque progressiva (em 1ª marcha, excesso de pé destraciona levemente antes de engolir asfalto)
       const targetSpeed = maxTargetSpeed * car.throttleInput * driftDrag;
       if(car.speed < targetSpeed){
         const speedNorm = Math.max(0, Math.min(1, car.speed / Math.max(0.5, maxTargetSpeed)));
-        const torqueCurve = 0.52 + 0.68 * Math.sin(speedNorm * Math.PI * 0.85);
+        const wheelSpinLoss = 1.0 - (car.rearWheelSpin || 0) * 0.28;
+        const torqueCurve = (0.52 + 0.68 * Math.sin(speedNorm * Math.PI * 0.85)) * wheelSpinLoss;
         const accelStep = 0.032 * Math.max(0.55, gameSpeed) * car.throttleInput * torqueCurve;
         car.speed = Math.min(targetSpeed, car.speed + accelStep);
       } else {
@@ -930,73 +944,113 @@ function updatePhysics(){
       if(Math.abs(car.speed) < 0.02) car.speed = 0;
     }
 
-    // Recarga do Turbo (acelerar e derrapar nas curvas carrega mais rápido!)
-    const driftBonus = Math.abs(car.slipAngle) > 0.16 ? 0.0022 : 0;
-    const moveBonus = Math.abs(car.speed) > 0.5 ? 0.0032 : 0.0010;
+    // Recarga do Turbo (derrapar controlando a tração traseira carrega mais rápido!)
+    const driftBonus = Math.abs(car.slipAngle) > 0.18 ? 0.0024 : 0;
+    const moveBonus = Math.abs(car.speed) > 0.5 ? 0.0030 : 0.0008;
     car.turboCharge = Math.min(1.0, car.turboCharge + moveBonus + driftBonus);
   }
   $("turboMeterFill").style.width = `${Math.round(car.turboCharge * 100)}%`;
 
-  // 3. Física Simcade com Aderência Reduzida em Alta Velocidade (Exige Frenagem nas Curvas!)
+  // 3. Dinâmica Simcade de TRAÇÃO TRASEIRA (RWD): Power Oversteer, Contra-Esterço e Frenagem Obrigatória
   const absSpeed = Math.abs(car.speed);
-  const normalTopSpeed = Math.max(0.8, car.baseSpeed * gameSpeed);
-  // Nível de excesso de velocidade para curva: acima de 52% da velocidade máxima, os pneus começam a espalhar (understeer/inércia)
   const excessCornerSpeed = Math.max(0, (absSpeed - normalTopSpeed * 0.52) / (normalTopSpeed * 0.48));
-  const lowSpeedRamp = Math.min(1.0, absSpeed / Math.max(0.4, normalTopSpeed * 0.25));
+  const lowSpeedRamp = Math.min(1.0, absSpeed / Math.max(0.35, normalTopSpeed * 0.22));
   const moveDir = car.speed < -0.05 ? -1 : 1;
 
+  // Cálculo do Círculo de Atrito nas Rodas Traseiras (Destracionamento RWD / Wheelspin)
+  const effectiveDrive = car.turboActive ? 1.15 : car.throttleInput;
+  const cornerLateralDemand = Math.min(1.2, Math.abs(car.steerInput) * 0.78 + Math.abs(car.slipAngle) * 1.15);
+  const lowGearTorque = Math.max(0, 1.0 - absSpeed / Math.max(0.5, normalTopSpeed * 0.38));
+  let targetWheelSpin = 0;
+  if(isBurnout){
+    targetWheelSpin = 0.92;
+  } else if(car.speed >= -0.02 && effectiveDrive > 0.35){
+    targetWheelSpin = Math.max(0, Math.min(1.0, effectiveDrive * (cornerLateralDemand * 0.92 + lowGearTorque * 0.58) - 0.34));
+  }
+  car.rearWheelSpin += (targetWheelSpin - car.rearWheelSpin) * 0.22;
+  if(car.rearWheelSpin < 0.01) car.rearWheelSpin = 0;
+
   // Frear na entrada da curva (Trail Braking) transfere peso para a dianteira, devolvendo aderência direcional ao bico!
-  const isTrailBraking = car.brakeInput > 0.12 && Math.abs(car.steerInput) > 0.20 && car.speed > normalTopSpeed * 0.35;
-  // Sem frear em alta velocidade, a frente espalha (understeer severo = 0.40); freando, o bico aponta firme na tangente!
-  const understeerPenalty = isTrailBraking
-    ? Math.max(0.82, 1.18 - excessCornerSpeed * 0.22)
+  const isTrailBraking = car.brakeInput > 0.12 && Math.abs(car.steerInput) > 0.20 && car.speed > normalTopSpeed * 0.32;
+  // Se entrar chutado em alta velocidade sem frear, os pneus dianteiros lavam a frente (understeer = 0.34)
+  const frontBite = isTrailBraking
+    ? Math.max(0.84, 1.18 - excessCornerSpeed * 0.20)
     : Math.max(0.34, 1.0 - excessCornerSpeed * 0.58);
 
-  const currentTurnRate = car.turnSpeed * Math.max(0.62, gameSpeed) * lowSpeedRamp * understeerPenalty * moveDir;
-
-  // O bico do carro gira proporcionalmente ao comando analógico e à aderência disponível na dianteira
-  if(absSpeed > 0.03){
-    car.angle += car.steerInput * currentTurnRate;
-  }
-
-  // O vetor velocidade (car.velAngle) tem aderência lateral limitada no asfalto:
-  // Se entrar rápido demais sem frear, a inércia centrífuga carrega o carro para fora da curva!
-  if(car.speed < -0.05){
+  if(isBurnout){
+    // No burnout parado, o torque traseiro permite girar a traseira no próprio eixo ("zerinho" controlado)
+    car.yawRate = car.yawRate * 0.78 + car.steerInput * 0.012 * car.throttleInput;
+    car.angle += car.yawRate;
+    car.velAngle = car.angle;
+    car.slipAngle = 0;
+  } else if(car.speed < -0.05){
+    // Marcha à ré
+    car.yawRate = 0;
+    car.angle += car.steerInput * car.turnSpeed * Math.max(0.62, gameSpeed) * lowSpeedRamp * moveDir;
     car.velAngle = car.angle;
     car.slipAngle = 0;
   } else {
-    // Limita apenas o quanto o bico pode desgarrar do vetor velocidade (nunca puxa o vetor velocidade à força!)
+    // 3a. Momento de giro das rodas dianteiras (inclui resposta imediata ao contra-esterço!)
+    let currentSlip = car.angle - car.velAngle;
+    while(currentSlip > Math.PI) currentSlip -= Math.PI * 2;
+    while(currentSlip < -Math.PI) currentSlip += Math.PI * 2;
+
+    const isCounterSteering = Math.abs(currentSlip) > 0.12 && (car.steerInput * currentSlip < -0.05);
+    const steerAuthority = isCounterSteering ? 1.18 : frontBite;
+    const desiredSteerYaw = car.steerInput * car.turnSpeed * Math.max(0.62, gameSpeed) * lowSpeedRamp * steerAuthority;
+
+    // 3b. Power Oversteer de Tração Traseira: pisar forte no acelerador na curva destraciona a traseira e joga a rabeta para fora!
+    let rwdOversteerYaw = 0;
+    if(car.rearWheelSpin > 0.05 && (Math.abs(car.steerInput) > 0.14 || Math.abs(currentSlip) > 0.08)){
+      const oversteerDir = Math.abs(currentSlip) > 0.10 ? Math.sign(currentSlip) : Math.sign(car.steerInput);
+      rwdOversteerYaw = oversteerDir * car.rearWheelSpin * 0.0052 * Math.max(0.65, gameSpeed);
+    }
+
+    // 3c. Estabilidade natural do eixo traseiro quando você alivia o pé do acelerador (retomada de tração)
+    const rearGripRestore = (1.0 - car.rearWheelSpin * 0.78) * 0.032 * lowSpeedRamp;
+    const restoringYaw = -currentSlip * rearGripRestore;
+
+    // Integra a velocidade angular do chassi (yawRate) com amortecimento suave
+    car.yawRate = car.yawRate * 0.74 + (desiredSteerYaw * 0.26) + rwdOversteerYaw + restoringYaw;
+    if(absSpeed > 0.02){
+      car.angle += car.yawRate;
+    } else {
+      car.yawRate = 0;
+    }
+
+    // Limita o ângulo máximo de atravessada RWD (~50 graus = 0.88 rad) para exigir contra-esterço sem travar o jogo
     let rawSlip = car.angle - car.velAngle;
     while(rawSlip > Math.PI) rawSlip -= Math.PI * 2;
     while(rawSlip < -Math.PI) rawSlip += Math.PI * 2;
-    const maxSlip = 0.64;
+    const maxSlip = 0.88;
     if(Math.abs(rawSlip) > maxSlip){
       rawSlip = Math.sign(rawSlip) * maxSlip;
       car.angle = car.velAngle + rawSlip;
+      car.yawRate *= 0.5;
     }
 
-    // Aderência lateral dos pneus cai drasticamente se tentar fazer a curva acelerando tudo em alta velocidade
+    // 3d. Aderência lateral da trajetória (se entrar rápido demais sem frear OU destracionar demais a traseira, o carro espalha!)
     const baseGrip = 0.095;
     const highSpeedGripLoss = Math.max(0.22, 1.0 - excessCornerSpeed * 0.76);
-    const throttleUndersteer = (car.throttleInput > 0.3 && excessCornerSpeed > 0.25) ? 0.72 : 1.0;
+    const rearSpinGripLoss = 1.0 - car.rearWheelSpin * 0.38;
     const brakeGripRecovery = isTrailBraking ? 1.35 : 1.0;
 
-    const lateralGrip = Math.min(0.11, baseGrip * highSpeedGripLoss * throttleUndersteer * brakeGripRecovery);
+    const lateralGrip = Math.min(0.11, baseGrip * highSpeedGripLoss * rearSpinGripLoss * brakeGripRecovery);
     car.velAngle += rawSlip * lateralGrip;
 
     let finalSlip = car.angle - car.velAngle;
     while(finalSlip > Math.PI) finalSlip -= Math.PI * 2;
     while(finalSlip < -Math.PI) finalSlip += Math.PI * 2;
-    car.slipAngle = (absSpeed > 0.35) ? finalSlip : 0;
+    car.slipAngle = (absSpeed > 0.30) ? finalSlip : 0;
 
-    // Atrito lateral dos pneus quando o carro escorrega de lado na curva (reduz velocidade proporcionalmente à derrapagem)
-    if(Math.abs(car.slipAngle) > 0.12 && Math.abs(car.steerInput) > 0.2){
-      const tireScrub = Math.min(0.032, Math.abs(car.slipAngle) * 0.042);
+    // Atrito lateral dos pneus quando atravessado de lado (se exagerar no ângulo sem contra-esterçar, perde bastante velocidade!)
+    if(Math.abs(car.slipAngle) > 0.14){
+      const tireScrub = Math.min(0.042, Math.abs(car.slipAngle) * 0.044);
       car.speed *= (1.0 - tireScrub);
     }
   }
 
-  if((Math.abs(car.slipAngle) > 0.14 || (excessCornerSpeed > 0.45 && Math.abs(car.steerInput) > 0.5)) && Math.random() < 0.22){
+  if((Math.abs(car.slipAngle) > 0.15 || car.rearWheelSpin > 0.32 || (excessCornerSpeed > 0.45 && Math.abs(car.steerInput) > 0.5)) && Math.random() < 0.22){
     sTireScreech();
   }
 
@@ -1052,6 +1106,7 @@ function updatePhysics(){
 
     // Atrito contínuo se continuar raspando no muro (impede "wall-riding")
     car.speed *= 0.88;
+    car.yawRate = 0;
 
     let diffAngle = trackInfo.forwardAngle - car.angle;
     while(diffAngle > Math.PI) diffAngle -= Math.PI * 2;
@@ -1101,8 +1156,9 @@ function updatePhysics(){
   const displayKmh = Math.round(Math.abs(car.speed) * 20);
   let statusBadge = "";
   if(car.turboActive) statusBadge = "🚀 TURBO!";
+  else if(isBurnout) statusBadge = "🔥 BURNOUT!";
   else if(car.speed < -0.1) statusBadge = "◀ RÉ";
-  else if(Math.abs(car.slipAngle) > 0.18) statusBadge = "💨 DRIFT!";
+  else if(Math.abs(car.slipAngle) > 0.18) statusBadge = "💨 RWD DRIFT!";
   else if(car.brakeInput > 0.2 && car.speed > 0.2) statusBadge = "🛑 FREIO";
   $("speedGauge").textContent = `${displayKmh} km/h ${statusBadge}`;
 }

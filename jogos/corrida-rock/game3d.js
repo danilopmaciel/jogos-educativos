@@ -747,7 +747,7 @@ class Game3D {
     bl2.position.set(-28.1, 0.5, 11);
     bodyGroup.add(bl2);
 
-    // 2. RODAS COM TEXTURA DE GOMOS E ARO ESTRELA DE 5 PONTAS:
+    // 2. RODAS COM TEXTURA DE GOMOS E ARO ESTRELA DE 5 PONTAS (TRAÇÃO TRASEIRA RWD COM PNEUS TRASEIROS MAIS LARGOS):
     // CylinderGeometry tem [lateral (banda de rodagem), topo (aro), base (aro)]
     const wheelMaterials = [
       new THREE.MeshStandardMaterial({ map: treadTex, roughness: 0.85, metalness: 0.1 }),
@@ -755,18 +755,27 @@ class Game3D {
       new THREE.MeshStandardMaterial({ map: rimTex, roughness: 0.25, metalness: 0.8 })
     ];
 
-    const wheelGeo = new THREE.CylinderGeometry(10.5, 10.5, 9, 24);
-    wheelGeo.rotateX(Math.PI / 2); // Eixo ao longo de Z (roda alinhada para frente em X)
+    const wheelFrontGeo = new THREE.CylinderGeometry(10.2, 10.2, 8.8, 24);
+    wheelFrontGeo.rotateX(Math.PI / 2); // Eixo ao longo de Z (roda alinhada para frente em X)
 
-    const wheelFL = new THREE.Mesh(wheelGeo, wheelMaterials);
-    const wheelFR = new THREE.Mesh(wheelGeo, wheelMaterials);
-    const wheelRL = new THREE.Mesh(wheelGeo, wheelMaterials);
-    const wheelRR = new THREE.Mesh(wheelGeo, wheelMaterials);
+    const wheelRearGeo = new THREE.CylinderGeometry(10.8, 10.8, 11.5, 24);
+    wheelRearGeo.rotateX(Math.PI / 2); // Pneus traseiros mais largos e parrudos (Muscle RWD)
 
-    wheelFL.position.set(16, 10.5, -20);
-    wheelFR.position.set(16, 10.5, 20);
-    wheelRL.position.set(-16, 10.5, -20);
-    wheelRR.position.set(-16, 10.5, 20);
+    // Pivôs (mangas de eixo) separados para esterçamento dianteiro em Y sem interferir no giro em Z
+    const hubFL = new THREE.Group();
+    hubFL.position.set(16, 10.2, -20);
+    const hubFR = new THREE.Group();
+    hubFR.position.set(16, 10.2, 20);
+
+    const wheelFL = new THREE.Mesh(wheelFrontGeo, wheelMaterials);
+    const wheelFR = new THREE.Mesh(wheelFrontGeo, wheelMaterials);
+    hubFL.add(wheelFL);
+    hubFR.add(wheelFR);
+
+    const wheelRL = new THREE.Mesh(wheelRearGeo, wheelMaterials);
+    const wheelRR = new THREE.Mesh(wheelRearGeo, wheelMaterials);
+    wheelRL.position.set(-16, 10.8, -20.8);
+    wheelRR.position.set(-16, 10.8, 20.8);
 
     [wheelFL, wheelFR, wheelRL, wheelRR].forEach(w => {
       w.castShadow = !isGhost;
@@ -785,7 +794,7 @@ class Game3D {
     const sRR = new THREE.Mesh(springGeo, springMat);
     sRR.position.set(-16, 12, 15);
 
-    group.add(wheelFL, wheelFR, wheelRL, wheelRR);
+    group.add(hubFL, hubFR, wheelRL, wheelRR);
     group.add(sFL, sFR, sRL, sRR);
 
     return {
@@ -796,6 +805,7 @@ class Game3D {
       wingMesh: wing,
       flames: { l: flameL, r: flameR },
       brakeLights: { l: bl1, r: bl2, mat: brakeMat },
+      hubs: { fl: hubFL, fr: hubFR },
       wheels: { fl: wheelFL, fr: wheelFR, rl: wheelRL, rr: wheelRR },
       springs: { fl: sFL, fr: sFR, rl: sRL, rr: sRR },
       setColor: (newColorHex) => {
@@ -883,7 +893,8 @@ class Game3D {
     }
 
     const isDrifting =
-      (Math.abs(physicsCar.slipAngle || 0) > 0.14 && Math.abs(physicsCar.speed) > 1.8) ||
+      (Math.abs(physicsCar.slipAngle || 0) > 0.14 && Math.abs(physicsCar.speed) > 1.5) ||
+      ((physicsCar.rearWheelSpin || 0) > 0.25) ||
       ((physicsCar.brakeInput || 0) > 0.55 && physicsCar.speed > 2.2);
 
     if (isDrifting) {
@@ -995,16 +1006,27 @@ class Game3D {
       }
     }
 
-    // 2. Rodas com esterçamento dianteiro e giro com gomos visíveis
+    // 2. Rodas com esterçamento dianteiro em pivô ortogonal e giro no sentido CORRETO (-Z = rolando para +X)
     if (this.carParts && this.carParts.wheels) {
-      this.carParts.wheels.fl.rotation.y = -physicsCar.steerAngle;
-      this.carParts.wheels.fr.rotation.y = -physicsCar.steerAngle;
+      if (this.carParts.hubs) {
+        this.carParts.hubs.fl.rotation.y = -physicsCar.steerAngle;
+        this.carParts.hubs.fr.rotation.y = -physicsCar.steerAngle;
+      }
 
-      const spinSpeed = physicsCar.speed * 0.16;
-      this.carParts.wheels.fl.rotation.z += spinSpeed;
-      this.carParts.wheels.fr.rotation.z += spinSpeed;
-      this.carParts.wheels.rl.rotation.z += spinSpeed;
-      this.carParts.wheels.rr.rotation.z += spinSpeed;
+      // No sistema local (+X frente, +Y cima, +Z direita), rotação NEGATIVA em Z move o topo da roda para +X (frente)!
+      // Também limitamos o passo angular a 0.42 rad/frame para evitar efeito estroboscópico (roda-de-carroça) nos 5 raios.
+      const groundSpin = Math.sign(physicsCar.speed) * Math.min(0.40, Math.abs(physicsCar.speed) * 0.095);
+      const frontBrakeLock = (physicsCar.brakeInput || 0) > 0.8 && physicsCar.speed > 1.2 ? 0.35 : 1.0;
+      const frontSpin = groundSpin * frontBrakeLock;
+
+      // Tração Traseira (RWD): as rodas traseiras giram mais rápido quando destracionam (burnout / power oversteer)
+      const rwdExtraSpin = (physicsCar.rearWheelSpin || 0) * 0.22;
+      const rearSpin = Math.sign(physicsCar.speed >= -0.02 ? 1 : -1) * Math.min(0.46, Math.abs(groundSpin) + rwdExtraSpin);
+
+      this.carParts.wheels.fl.rotation.z -= frontSpin;
+      this.carParts.wheels.fr.rotation.z -= frontSpin;
+      this.carParts.wheels.rl.rotation.z -= rearSpin;
+      this.carParts.wheels.rr.rotation.z -= rearSpin;
     }
 
     // 3. Vetor Força Lateral (+Z = direita, -Z = esquerda) - ocultável para players experientes
@@ -1110,14 +1132,16 @@ class Game3D {
         oCar.bodyGroup.rotation.x = -(p.roll || 0) * 0.22;
         oCar.bodyGroup.rotation.z = (p.pitch || 0) * 0.16;
       }
+      if (oCar.hubs) {
+        oCar.hubs.fl.rotation.y = -(p.steer || 0);
+        oCar.hubs.fr.rotation.y = -(p.steer || 0);
+      }
       if (oCar.wheels) {
-        oCar.wheels.fl.rotation.y = -(p.steer || 0);
-        oCar.wheels.fr.rotation.y = -(p.steer || 0);
-        const spin = Math.min(0.8, moveSpeed * 0.1);
-        oCar.wheels.fl.rotation.z += spin;
-        oCar.wheels.fr.rotation.z += spin;
-        oCar.wheels.rl.rotation.z += spin;
-        oCar.wheels.rr.rotation.z += spin;
+        const spin = Math.min(0.40, moveSpeed * 0.085);
+        oCar.wheels.fl.rotation.z -= spin;
+        oCar.wheels.fr.rotation.z -= spin;
+        oCar.wheels.rl.rotation.z -= spin;
+        oCar.wheels.rr.rotation.z -= spin;
       }
     }
 
@@ -1148,9 +1172,15 @@ class Game3D {
       this.ghostGroup.bodyGroup.rotation.x = -(ghostPose.roll || 0) * 0.22;
       this.ghostGroup.bodyGroup.rotation.z = (ghostPose.pitch || 0) * 0.16;
     }
+    if (this.ghostGroup.hubs) {
+      this.ghostGroup.hubs.fl.rotation.y = -(ghostPose.steerAngle || 0);
+      this.ghostGroup.hubs.fr.rotation.y = -(ghostPose.steerAngle || 0);
+    }
     if (this.ghostGroup.wheels) {
-      this.ghostGroup.wheels.fl.rotation.y = -(ghostPose.steerAngle || 0);
-      this.ghostGroup.wheels.fr.rotation.y = -(ghostPose.steerAngle || 0);
+      this.ghostGroup.wheels.fl.rotation.z -= 0.24;
+      this.ghostGroup.wheels.fr.rotation.z -= 0.24;
+      this.ghostGroup.wheels.rl.rotation.z -= 0.24;
+      this.ghostGroup.wheels.rr.rotation.z -= 0.24;
     }
   }
 
